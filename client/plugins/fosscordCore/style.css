@@ -12,3 +12,13 @@
     width: 12px;
     height: 12px;
 }
+
+[class*="imageUploaderInner_"][class*="avatarUploaderInnerSquare_"] {
+    width: 100%;
+    height: 180px;
+}
+
+[class*="imageUploaderIcon_"][class*="avatarUploadIcon_"] {
+    top: 16px;
+    inset-inline-end: 16px;
+}
