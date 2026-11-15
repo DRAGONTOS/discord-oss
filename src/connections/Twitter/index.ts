@@ -1,43 +1,45 @@
-import wretch from "wretch";
+import crypto from "node:crypto";
 import { ConnectedAccount } from "@spacebar/database";
 import { RefreshableConnection, ConnectionLoader, DiscordApiErrors } from "@spacebar/util";
 import { ConnectedAccountCommonOAuthTokenResponse, ConnectionCallbackSchema } from "@spacebar/schemas";
 import { GenericOAuthSettings as TwitterSettings } from "../GenericOAuthSettings";
 
 interface TwitterUserResponse {
-    data: {
-        id: string;
-        name: string;
-        username: string;
-        created_at: string;
-        location: string;
-        url: string;
-        description: string;
-        verified: string;
+    data?: {
+        id?: string;
+        name?: string;
+        username?: string;
     };
 }
 
-// interface TwitterErrorResponse {
-// 	error: string;
-// 	error_description: string;
-// }
+type XFailure = { error?: unknown; title?: unknown; type?: unknown; reason?: unknown };
+
+const failureCode = (body: XFailure | null) => {
+    const value = [body?.reason, body?.error, body?.title].find((x) => typeof x === "string" && x.trim());
+    return typeof value === "string" ? value.replace(/[^\w .-]/g, "").slice(0, 64) : "no details";
+};
+
+const base64Url = (buffer: Buffer) => buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+export const pkcePair = () => {
+    const verifier = base64Url(crypto.randomBytes(48));
+    return { verifier, challenge: base64Url(crypto.createHash("sha256").update(verifier).digest()) };
+};
 
 export default class TwitterConnection extends RefreshableConnection {
     public readonly id = "twitter";
-    public friendlyName = "Twitter";
-    public setupUrl = "https://console.x.com";
-    public requiredScopes = []; //no scopes nessecary
+    public friendlyName = "X";
+    public setupUrl = "https://developer.x.com/en/portal/dashboard";
+    public requiredScopes = ["users.read", "tweet.read"];
 
-    public readonly authorizeUrl = "https://twitter.com/i/oauth2/authorize";
-    public readonly tokenUrl = "https://api.twitter.com/2/oauth2/token";
-    public readonly userInfoUrl = "https://api.twitter.com/2/users/me?user.fields=created_at%2Cdescription%2Cid%2Cname%2Cusername%2Cverified%2Clocation%2Curl";
-    public readonly scopes = ["users.read", "tweet.read"];
+    public readonly authorizeUrl = "https://x.com/i/oauth2/authorize";
+    public readonly tokenUrl = "https://api.x.com/2/oauth2/token";
+    public readonly userInfoUrl = "https://api.x.com/2/users/me";
+    public readonly scopes = ["users.read", "tweet.read", "offline.access"];
     settings: TwitterSettings = new TwitterSettings();
 
     init(): void {
         this.settings = ConnectionLoader.getConnectionConfig<TwitterSettings>(this.id, this.settings);
-
-        if (this.settings.enabled && (!this.settings.clientId || !this.settings.clientSecret)) throw new Error(`Invalid settings for connection ${this.id}`);
     }
 
     public get isConfigured(): boolean {
@@ -45,16 +47,15 @@ export default class TwitterConnection extends RefreshableConnection {
     }
 
     getAuthorizationUrl(userId: string): string {
-        const state = this.createState(userId);
+        const { verifier, challenge } = pkcePair();
         const url = new URL(this.authorizeUrl);
-
-        url.searchParams.append("client_id", this.settings.clientId as string);
-        url.searchParams.append("redirect_uri", this.getRedirectUri());
-        url.searchParams.append("response_type", "code");
-        url.searchParams.append("scope", this.scopes.join(" "));
-        url.searchParams.append("state", state);
-        url.searchParams.append("code_challenge", "challenge"); // TODO: properly use PKCE challenge
-        url.searchParams.append("code_challenge_method", "plain");
+        url.searchParams.set("response_type", "code");
+        url.searchParams.set("client_id", this.settings.clientId as string);
+        url.searchParams.set("redirect_uri", this.getRedirectUri());
+        url.searchParams.set("scope", this.scopes.join(" "));
+        url.searchParams.set("state", this.createState(userId, { verifier }));
+        url.searchParams.set("code_challenge", challenge);
+        url.searchParams.set("code_challenge_method", "S256");
         return url.toString();
     }
 
@@ -62,95 +63,76 @@ export default class TwitterConnection extends RefreshableConnection {
         return this.tokenUrl;
     }
 
+    private async tokenRequest(step: string, body: Record<string, string>): Promise<ConnectedAccountCommonOAuthTokenResponse> {
+        const credentials = Buffer.from(`${this.settings.clientId as string}:${this.settings.clientSecret as string}`).toString("base64");
+        const response = await fetch(this.tokenUrl, {
+            method: "POST",
+            headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded", Authorization: `Basic ${credentials}` },
+            body: new URLSearchParams(body),
+            redirect: "error",
+            signal: AbortSignal.timeout(10_000),
+        }).catch(() => null);
+        const json = (await response?.json().catch(() => null)) as (Partial<ConnectedAccountCommonOAuthTokenResponse> & XFailure) | null;
+        if (!response?.ok || !json?.access_token) {
+            console.error(`[X connection] ${step} failed with status ${response?.status ?? "no answer"}: ${failureCode(json)}`);
+            throw DiscordApiErrors.GENERAL_ERROR;
+        }
+        return json as ConnectedAccountCommonOAuthTokenResponse;
+    }
+
     async exchangeCode(state: string, code: string): Promise<ConnectedAccountCommonOAuthTokenResponse> {
-        this.validateState(state);
-
-        const url = this.getTokenUrl();
-
-        return wretch(url.toString())
-            .headers({
-                Accept: "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
-                Authorization: `Basic ${Buffer.from(`${this.settings.clientId as string}:${this.settings.clientSecret as string}`).toString("base64")}`,
-            })
-            .body(
-                new URLSearchParams({
-                    grant_type: "authorization_code",
-                    code: code,
-                    client_id: this.settings.clientId as string,
-                    redirect_uri: this.getRedirectUri(),
-                    code_verifier: "challenge", // TODO: properly use PKCE challenge
-                }),
-            )
-            .post()
-            .json<ConnectedAccountCommonOAuthTokenResponse>()
-            .catch((e) => {
-                console.error(e);
-                throw DiscordApiErrors.GENERAL_ERROR;
-            });
+        const verifier = this.validateState(state).data?.verifier;
+        if (typeof verifier !== "string") throw DiscordApiErrors.INVALID_OAUTH_STATE;
+        return this.tokenRequest("token exchange", {
+            grant_type: "authorization_code",
+            code,
+            client_id: this.settings.clientId as string,
+            redirect_uri: this.getRedirectUri(),
+            code_verifier: verifier,
+        });
     }
 
     async refreshToken(connectedAccount: ConnectedAccount): Promise<ConnectedAccountCommonOAuthTokenResponse> {
         if (!connectedAccount.token_data?.refresh_token) throw new Error("No refresh token available.");
-        const refresh_token = connectedAccount.token_data.refresh_token;
-
-        const url = this.getTokenUrl();
-
-        return wretch(url.toString())
-            .headers({
-                Accept: "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
-                Authorization: `Basic ${Buffer.from(`${this.settings.clientId as string}:${this.settings.clientSecret as string}`).toString("base64")}`,
-            })
-            .body(
-                new URLSearchParams({
-                    grant_type: "refresh_token",
-                    refresh_token,
-                    client_id: this.settings.clientId as string,
-                    redirect_uri: this.getRedirectUri(),
-                    code_verifier: "challenge", // TODO: properly use PKCE challenge
-                }),
-            )
-            .post()
-            .json<ConnectedAccountCommonOAuthTokenResponse>()
-            .catch((e) => {
-                console.error(e);
-                throw DiscordApiErrors.GENERAL_ERROR;
-            });
+        return this.tokenRequest("token refresh", {
+            grant_type: "refresh_token",
+            refresh_token: connectedAccount.token_data.refresh_token,
+            client_id: this.settings.clientId as string,
+        });
     }
 
-    async getUser(token: string): Promise<TwitterUserResponse> {
-        const url = new URL(this.userInfoUrl);
-        return wretch(url.toString())
-            .headers({
-                Authorization: `Bearer ${token}`,
-            })
-            .get()
-            .json<TwitterUserResponse>()
-            .catch((e) => {
-                console.error(e);
-                throw DiscordApiErrors.GENERAL_ERROR;
-            });
+    async getUser(token: string): Promise<{ id: string; username: string }> {
+        const response = await fetch(this.userInfoUrl, {
+            headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+            redirect: "error",
+            signal: AbortSignal.timeout(10_000),
+        }).catch(() => null);
+        const json = (await response?.json().catch(() => null)) as (TwitterUserResponse & XFailure) | null;
+        const id = json?.data?.id;
+        const username = json?.data?.username;
+        if (!response?.ok || !id || !/^\d{1,20}$/.test(id) || !username) {
+            console.error(`[X connection] user lookup failed with status ${response?.status ?? "no answer"}: ${failureCode(json)}`);
+            throw DiscordApiErrors.GENERAL_ERROR;
+        }
+        return { id, username: username.slice(0, 64) };
     }
 
     async handleCallback(params: ConnectionCallbackSchema): Promise<ConnectedAccount | null> {
         const { state, code } = params;
-        if (!code) throw new Error("No code provided");
+        if (!code) throw DiscordApiErrors.GENERAL_ERROR;
 
         const userId = this.getUserId(state);
         const tokenData = await this.exchangeCode(state, code);
-        const userInfo = await this.getUser(tokenData.access_token);
+        const user = await this.getUser(tokenData.access_token);
 
-        const exists = await this.hasConnection(userId, userInfo.data.id);
-
-        if (exists) return null;
+        if (await this.hasConnection(userId, user.id)) return null;
 
         return await this.createConnection({
             token_data: { ...tokenData, fetched_at: Date.now() },
             user_id: userId,
-            external_id: userInfo.data.id,
+            external_id: user.id,
             friend_sync: params.friend_sync,
-            name: userInfo.data.name,
+            name: user.username,
             type: this.id,
         });
     }

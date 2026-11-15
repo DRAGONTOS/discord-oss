@@ -99,6 +99,14 @@ Discord's own client has no Discord entry in its list of connection platforms, s
 
 The connection stores the Last.fm username. [music-presence.md](music-presence.md) describes the sign in and the Listening activity.
 
+### X
+
+1. Open [developer.x.com](https://developer.x.com/en/portal/dashboard), create a project and an app, and turn on User authentication with the app type Web App, a confidential client.
+2. Set the callback URL to the callback URL from the dashboard and the website URL to the instance.
+3. Paste the OAuth 2.0 client ID and client secret, not the API key and secret, into the dashboard and turn X on.
+
+The server signs people in with OAuth 2.0 and PKCE: each sign in gets its own random verifier, kept with the one-time state, and sends its S256 challenge. It asks for `users.read`, `tweet.read` and `offline.access`, exchanges the code at `api.x.com/2/oauth2/token` and reads `api.x.com/2/users/me`. The connection stores the X user ID and is named after the handle, which the client uses for the profile link. X charges for API use, so reading `users/me` fails with status 402 `CreditsDepleted` when the developer account has no credits. Failures log the status and X's error code or title, such as `invalid_request`, `client-not-enrolled` or `CreditsDepleted`, and the popup shows the error page.
+
 ### GitHub
 
 1. Open [github.com/settings/developers](https://github.com/settings/developers) and create an OAuth app.
