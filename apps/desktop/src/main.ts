@@ -7,6 +7,7 @@ import { registerGames } from "./games";
 import { registerMusic } from "./music";
 import { registerScreenshare, screenshareFeatureFlags } from "./screenshare";
 import { forgetInstance, rememberInstance, saveSettings, settings, type WindowState } from "./store";
+import { registerRpc } from "./rpc";
 
 const PROTOCOL = "discord-oss";
 const APP_ID = "org.discordoss.app";
@@ -34,6 +35,7 @@ let pendingDeepLink: string | null = process.argv.find((arg) => arg.startsWith(`
 let lastMentionCount = 0;
 let stopMusic = () => {};
 let stopGames = () => {};
+let stopRpc = () => {};
 
 app.setName(APP_NAME);
 if (process.platform === "win32") app.setAppUserModelId(APP_ID);
@@ -443,11 +445,16 @@ function registerPermissions() {
     registerScreenshare(defaultSession, { allowed: isInstanceUrl, parent: () => mainWindow, preload, appRoot });
 }
 
-function start() {
+async function start() {
     registerIpc();
     registerPermissions();
     stopMusic = registerMusic({ allowed: isInstanceUrl }).stop;
     stopGames = registerGames({ allowed: isInstanceUrl }).stop;
+    try {
+        stopRpc = (await registerRpc({ allowed: isInstanceUrl })).stop;
+    } catch (error) {
+        console.error("RPC server failed to start:", error);
+    }
     if (settings().openAtLogin) setOpenAtLogin(true);
     tray = new Tray(trayImage());
     tray.setToolTip(APP_NAME);
@@ -469,6 +476,7 @@ app.on("before-quit", () => {
     quitting = true;
     stopMusic();
     stopGames();
+    stopRpc();
 });
 
 app.on("window-all-closed", () => {
