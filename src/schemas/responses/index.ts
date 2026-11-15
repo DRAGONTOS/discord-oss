@@ -37,7 +37,6 @@ export * from "./PartialConnectedAccountResponse";
 export * from "./PreloadMessagesResponseSchema";
 export * from "./ProgramRewardsResponse";
 export * from "./RefreshUrlsResponse";
-export * from "./RoleExpirationsResponse";
 export * from "./SettingsProtoUpdateResponse";
 export * from "./TeamListResponse";
 export * from "./TokenResponse";
