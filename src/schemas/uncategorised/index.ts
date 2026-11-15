@@ -36,7 +36,6 @@ export * from "./LoginSchema";
 export * from "./AutomodAppealSchema";
 export * from "./MemberChangeProfileSchema";
 export * from "./MemberChangeSchema";
-export * from "./MemberRoleAssignSchema";
 export * from "./MemberNickChangeSchema";
 export * from "./MessageAcknowledgeSchema";
 export * from "./MessageCreateSchema";

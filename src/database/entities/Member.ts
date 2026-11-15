@@ -31,7 +31,6 @@ import { Channel } from "./Channel";
 import { Guild, PublicGuildRelations } from "./Guild";
 import { Message } from "./Message";
 import { Role } from "./Role";
-import { MemberRoleExpiration } from "./MemberRoleExpiration";
 import { User } from "./User";
 import { GuildInsights } from "../insights/GuildInsights";
 import { ScheduledEvents } from "../voice/ScheduledEvents";
@@ -280,7 +279,7 @@ export class Member extends BaseClassWithoutId {
         ]);
     }
 
-    static async addRole(user_id: string, guild_id: string, role_id: string, expiration?: { expires_at: Date | null; assigned_by?: string | null }) {
+    static async addRole(user_id: string, guild_id: string, role_id: string) {
         const [member] = await Promise.all([
             Member.findOneOrFail({
                 where: { id: user_id, guild_id },
@@ -294,7 +293,6 @@ export class Member extends BaseClassWithoutId {
         if (!member.roles.some((x) => x.id === role_id)) member.roles.push(Role.create({ id: role_id }));
 
         await member.save();
-        if (expiration) await MemberRoleExpiration.setFor(member, role_id, expiration.expires_at, expiration.assigned_by);
         await Promise.all([
             emitEvent({
                 event: "GUILD_MEMBER_UPDATE",
@@ -303,7 +301,6 @@ export class Member extends BaseClassWithoutId {
                     guild_id,
                     user: member.user.toPublicUser(),
                     roles: member.roles.map((x) => x.id).filter((id) => id !== guild_id),
-                    role_expirations: await MemberRoleExpiration.forMember(guild_id, user_id),
                 },
                 guild_id,
             } satisfies GuildMemberUpdateEvent),
@@ -347,7 +344,6 @@ export class Member extends BaseClassWithoutId {
         member.roles = member.roles.filter((x) => x.id !== role_id);
 
         await member.save();
-        await MemberRoleExpiration.setFor(member, role_id, null);
         await Promise.all([
             emitEvent({
                 event: "GUILD_MEMBER_UPDATE",
@@ -356,7 +352,6 @@ export class Member extends BaseClassWithoutId {
                     guild_id,
                     user: member.user.toPublicUser(),
                     roles: member.roles.map((x) => x.id).filter((id) => id !== guild_id),
-                    role_expirations: await MemberRoleExpiration.forMember(guild_id, user_id),
                 },
                 guild_id,
             } satisfies GuildMemberUpdateEvent),
