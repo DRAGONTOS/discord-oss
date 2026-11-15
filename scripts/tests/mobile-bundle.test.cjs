@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { createRewriter, endpointsFromOrigin, rewriteValue } = require("../../client/mobile/src/rewrite.ts");
+const { authorizationFrom } = require("../../client/mobile/src/authorization.ts");
 
 const BUNDLE = path.join(__dirname, "..", "..", "assets", "public", "mobile", "meowcord.js");
 const endpoints = { api: "https://chat.example/api/v9", gateway: "wss://chat.example/", cdn: "https://chat.example/", media: "https://chat.example" };
@@ -27,6 +28,25 @@ test("rewrites discord urls embedded in serialized text", () => {
     const rows = JSON.stringify([{ avatarURL: "https://cdn.discordapp.com/avatars/1/a.png?size=80", content: "see https://media.discordapp.net/x.png)" }]);
     assert.equal(rewrite(rows), JSON.stringify([{ avatarURL: "https://chat.example/avatars/1/a.png?size=80", content: "see https://chat.example/x.png)" }]));
     assert.equal(rewrite('"https://cdn.discordapp.com.evil.test/x"'), '"https://cdn.discordapp.com.evil.test/x"');
+});
+
+test("finds the Authorization header in Android and iOS sendRequest arguments", () => {
+    assert.equal(
+        authorizationFrom([
+            "GET",
+            "https://x",
+            1,
+            [
+                ["Content-Type", "a"],
+                ["Authorization", "android"],
+            ],
+            {},
+        ]),
+        "android",
+    );
+    assert.equal(authorizationFrom([{ method: "GET", url: "https://x", headers: { "Content-Type": "a", authorization: "ios" } }, () => {}]), "ios");
+    assert.equal(authorizationFrom([{ method: "GET", url: "https://x", headers: {} }]), null);
+    assert.equal(authorizationFrom(["GET", null, [["Authorization", 5]]]), null);
 });
 
 test("derives endpoints from an instance origin", () => {
