@@ -40,6 +40,14 @@ if (location.protocol === "file:") {
                 };
             },
         },
+        rpc: {
+              watch: () => ipcRenderer.send("rpc:watch"),
+            onActivity: (listener: (data: unknown) => void) => {
+            const handler = (_e: Electron.IpcRendererEvent, data: unknown) => listener(data);
+            ipcRenderer.on("rpc:activity", handler);
+            return () => { ipcRenderer.off("rpc:activity", handler); };
+        },
+    },
     });
     webFrame.executeJavaScript(
         `(() => {
