@@ -1,4 +1,5 @@
 import "./e2ee/globals";
+import { authorizationFrom } from "./authorization";
 import { createMobileE2ee } from "./e2ee";
 import { registerUnifiedPush } from "./push";
 import { createRewriter, type Endpoints, endpointsFromOrigin, rewriteValue } from "./rewrite";
@@ -77,16 +78,11 @@ const start = () => {
         }, 5000);
     }
     const watchAuthorization = (args: unknown[]) => {
-        for (const arg of args) {
-            if (!Array.isArray(arg)) continue;
-            for (const header of arg) {
-                if (Array.isArray(header) && typeof header[0] === "string" && header[0].toLowerCase() === "authorization" && typeof header[1] === "string") {
-                    onAuthorization(header[1]);
-                    switcher.noteAuthorization();
-                    e2ee.onAuthorization(header[1]);
-                }
-            }
-        }
+        const token = authorizationFrom(args);
+        if (!token) return;
+        onAuthorization(token);
+        switcher.noteAuthorization();
+        e2ee.onAuthorization(token);
     };
 
     const wrappedModules = new WeakMap<object, unknown>();
