@@ -4,7 +4,13 @@ import { basename } from "node:path";
 // venmic is a PipeWire-only native addon, so it is loaded lazily and only on Linux.
 // A failed load (missing prebuild, no PipeWire) just means "no desktop audio".
 interface PatchBayLike {
-    link(data: { include?: Record<string, string>[]; exclude?: Record<string, string>[]; ignore_devices?: boolean; only_speakers?: boolean; only_default_speakers?: boolean }): boolean;
+    link(data: {
+        include?: Record<string, string>[];
+        exclude?: Record<string, string>[];
+        ignore_devices?: boolean;
+        only_speakers?: boolean;
+        only_default_speakers?: boolean;
+    }): boolean;
     unlink(): void;
 }
 
