@@ -87,7 +87,11 @@ The bundle finds Discord's modules by shape as Metro defines them, never by modu
 - the gateway store with `getSocket` and `isTryingToConnect`, whose socket's dispatch handlers decrypt `MESSAGE_CREATE` and `MESSAGE_UPDATE` before the app stores them,
 - the channel store with `getChannel` and `getDMFromUserId`, to tell DMs from guild channels.
 
-The wrapping is `createHooks` from `client/e2ee/src/hooks.ts`, the same code the web loader uses. The login password the app sends to `/auth/login` is kept in memory for the backup, as on the web. Attachments in encrypted conversations are refused with an error, because the file encryption path needs a service worker.
+The wrapping is `createHooks` from `client/e2ee/src/hooks.ts`, the same code the web loader uses. The login password the app sends to `/auth/login` is kept in memory for the backup, as on the web. Sending a file in an encrypted conversation is refused with an error, because the web's upload path encrypts in a service worker.
+
+### Encrypted attachments
+
+Received files are opened by `client/mobile/src/e2ee/attachments.ts`. When a message is decrypted, each attachment named in the envelope gets its real file name, type, size and dimensions back, and its URL points at `meowcord-e2ee-files/<attachment id>.<extension>` in the app's cache folder (`CacheDirPath` of `NativeFileModule`). If that file isn't there yet, the URL carries `?pending=1`, and the bundle downloads the `.bin`, decrypts its 64 KiB chunks with the same `decryptFile` as the web, writes the result through `NativeFileModule.writeFile` and dispatches the message again as a local `MESSAGE_UPDATE` with the plain file URL, so the chat loads the file afresh. Two files are opened at a time and files over 50 MiB stay closed. A ciphertext URL on the instance must be an attachment of that channel under the name in the envelope. On Discord 352.0 for iOS the native chat draws these `file://` images inline: a 137 KB PNG sent from the web opened in the simulator on 2026-11-16. `scripts/tests/mobile-e2ee-attachments.test.cjs` covers the rewrite, a three-chunk round trip through the shim and the URL checks.
 
 ### Device approval
 
@@ -152,7 +156,7 @@ The run used Discord 349.9 Stable (version code 349009) patched by KettuManager 
 
 ## What doesn't work yet
 
-- Attachments, stickers from the picker, polls and voice messages in encrypted DMs. Text works.
+- Sending attachments, stickers from the picker, polls and voice messages in encrypted DMs. Text works, and received files open.
 - Any E2EE UI. There is no Encryption settings page, no safety number screen and no approval prompt, and errors only reach `adb logcat`.
 - Signing up. Registration asks for a [Cap](../features/signup.md) proof and the app only knows hCaptcha. Accounts have to be made on the web. Login works as long as `login.requireCaptcha` stays off.
 - `POST /messages-log/private-channels/get` answers 404.

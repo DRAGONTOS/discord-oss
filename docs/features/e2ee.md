@@ -131,7 +131,7 @@ The message endpoints answer these codes. The device, identity and backup endpoi
 
 ## Discord's Android app
 
-The mobile bundle handles encrypted text but not attachments, approvals or safety numbers, as [android-client.md](../development/android-client.md#encrypted-dms) describes.
+The mobile bundle handles encrypted text and opens received attachments, but can't send files and has no approvals or safety numbers, as [android-client.md](../development/android-client.md#encrypted-dms) describes.
 
 ## For contributors
 
