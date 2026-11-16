@@ -5,6 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { createRewriter, endpointsFromOrigin, rewriteValue } = require("../../client/mobile/src/rewrite.ts");
 const { authorizationFrom } = require("../../client/mobile/src/authorization.ts");
+const { argon2id } = require("../../client/mobile/src/e2ee/argon2.ts");
 
 const BUNDLE = path.join(__dirname, "..", "..", "assets", "public", "mobile", "meowcord.js");
 const endpoints = { api: "https://chat.example/api/v9", gateway: "wss://chat.example/", cdn: "https://chat.example/", media: "https://chat.example" };
@@ -47,6 +48,32 @@ test("finds the Authorization header in Android and iOS sendRequest arguments", 
     assert.equal(authorizationFrom([{ method: "GET", url: "https://x", headers: { "Content-Type": "a", authorization: "ios" } }, () => {}]), "ios");
     assert.equal(authorizationFrom([{ method: "GET", url: "https://x", headers: {} }]), null);
     assert.equal(authorizationFrom(["GET", null, [["Authorization", 5]]]), null);
+});
+
+test("argon2id uses a loader's native implementation and falls back without one", async () => {
+    const options = {
+        password: new Uint8Array([112, 119]),
+        salt: Uint8Array.from({ length: 16 }, (_, i) => i + 1),
+        parallelism: 1,
+        iterations: 1,
+        memorySize: 1024,
+        hashLength: 32,
+    };
+    const expected = "fb0f61950138a8079535fffc5501ecdf1e18726d6b52aa18e6bcf1ff2e5012e1";
+    const hex = (bytes) => Buffer.from(bytes).toString("hex");
+    const calls = [];
+    globalThis.__nativeArgon2id = (...args) => {
+        calls.push(args);
+        return expected;
+    };
+    try {
+        assert.equal(hex(await argon2id(options)), expected);
+        assert.deepEqual(calls, [["7077", "0102030405060708090a0b0c0d0e0f10", 1, 1024, 1, 32]]);
+        globalThis.__nativeArgon2id = () => null;
+        assert.equal(hex(await argon2id(options)), expected);
+    } finally {
+        delete globalThis.__nativeArgon2id;
+    }
 });
 
 test("derives endpoints from an instance origin", () => {
