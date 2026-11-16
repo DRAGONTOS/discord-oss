@@ -180,7 +180,7 @@ After=docker.service network-online.target
 Type=oneshot
 User=<checkout owner>
 WorkingDirectory=/srv/meowcord
-ExecStart=/srv/meowcord/scripts/auto-update.sh
+ExecStart=/usr/bin/bash /srv/meowcord/scripts/auto-update.sh
 
 # /etc/systemd/system/meowcord-update.timer
 [Unit]
@@ -195,7 +195,7 @@ AccuracySec=1s
 WantedBy=timers.target
 ```
 
-`systemctl enable --now meowcord-update.timer` starts it, and `journalctl -u meowcord-update` shows each run. The next run starts 30 seconds after the previous one ends, so runs never overlap. Without systemd, cron does the same at most once a minute:
+`systemctl enable --now meowcord-update.timer` starts it. The script runs through `bash` because SELinux, enforcing on Oracle Linux and RHEL, stops systemd from executing a file in a home directory (status 203/EXEC). `journalctl -u meowcord-update` shows each run. The next run starts 30 seconds after the previous one ends, so runs never overlap. Without systemd, cron does the same at most once a minute:
 
 ```cron
 * * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
