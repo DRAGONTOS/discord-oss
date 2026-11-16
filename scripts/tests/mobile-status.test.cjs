@@ -1,36 +1,44 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { displayStatus, patchPresenceStore } = require("../../client/mobile/src/status.ts");
+const { patchStatusExports, tintImages, TESTING_COLOR } = require("../../client/mobile/src/status.ts");
 
-class PresenceStore {
-    constructor(statuses) {
-        this.statuses = statuses;
-    }
-    getStatus(userId) {
-        return this.statuses[userId] ?? "offline";
-    }
-    isMobileOnline() {
-        return false;
-    }
+const element = (type, props) => ({ $$typeof: Symbol.for("react.transitional.element"), type, key: null, props });
+const ICONS = { online: 335, offline: 334, dnd: 336 };
+// shaped like the app's Status component: a container with the status icon image inside
+function Status(props) {
+    return element("View", { style: { width: 16 }, children: element("Image", { source: ICONS[props.status] ?? 0, style: { width: "100%" } }) });
 }
 
-test("the testing status shows as Do Not Disturb in the mobile app", () => {
-    assert.equal(displayStatus("testing"), "dnd");
-    for (const status of ["online", "idle", "dnd", "offline", undefined]) assert.equal(displayStatus(status), status);
+test("the testing status draws the online icon tinted blue, with the device shape props passed through", () => {
+    const replaced = patchStatusExports({ default: Status });
+    const drawn = replaced.default({ status: "testing", isMobileOnline: true, size: 10 });
+    const image = drawn.props.children;
+    assert.equal(image.props.source, ICONS.online);
+    assert.deepEqual(image.props.style, [{ width: "100%" }, { tintColor: TESTING_COLOR }]);
+    assert.equal(drawn.$$typeof, Symbol.for("react.transitional.element"), "still a React element");
+    assert.equal(replaced.default({ status: "dnd" }).props.children.props.source, ICONS.dnd, "other statuses are drawn as before");
 });
 
-test("the presence store's getStatus is wrapped once, through the default export too", () => {
-    const store = new PresenceStore({ 1: "testing", 2: "online" });
-    assert.equal(patchPresenceStore({ default: store }), true);
-    assert.equal(store.getStatus("1"), "dnd");
-    assert.equal(store.getStatus("2"), "online");
-    assert.equal(new PresenceStore({ 3: "testing" }).getStatus("3"), "dnd", "the class is patched, so every instance");
-    assert.equal(patchPresenceStore(store), false, "a second module exporting the store doesn't wrap it again");
-    assert.equal(store.getStatus("1"), "dnd");
+test("tintImages only touches images", () => {
+    const tree = element("View", { style: { a: 1 }, children: [element("Image", { source: 1 }), "text", null] });
+    const tinted = tintImages(tree, "#000");
+    assert.deepEqual(tinted.props.style, { a: 1 });
+    assert.deepEqual(tinted.props.children[0].props.style, [undefined, { tintColor: "#000" }]);
+    assert.equal(tinted.props.children[1], "text");
 });
 
-test("lazy proxies that answer every property are left alone", () => {
-    const proxy = new Proxy({}, { get: () => () => "testing" });
-    assert.equal(patchPresenceStore(proxy), false);
-    assert.equal(patchPresenceStore({ getStatus: () => "testing", isMobileOnline: () => false }), false, "plain objects aren't stores");
+test("the status labels name it Testing, and modules are patched once", () => {
+    function getStatusLabel(status) {
+        return `label:${status}`;
+    }
+    function humanizeStatus(status) {
+        return `human:${status}`;
+    }
+    const replaced = patchStatusExports({ getStatusLabel, humanizeStatus });
+    assert.equal(replaced.getStatusLabel("testing"), "Testing");
+    assert.equal(replaced.humanizeStatus("testing"), "Testing");
+    assert.equal(replaced.getStatusLabel("idle"), "label:idle");
+    assert.equal(patchStatusExports(replaced), null, "already patched functions aren't wrapped again");
+    assert.equal(patchStatusExports({ default: function Other() {} }), null);
+    assert.equal(patchStatusExports(new Proxy({}, { get: () => () => "x" })), null, "lazy proxies don't match");
 });
