@@ -22,6 +22,7 @@
     },
     "trustedDependencies": ["electron"],
     "dependencies": {
+        "@vencord/venmic": "^7.2.5",
         "arrpc": "^3.6.0"
     }
 }

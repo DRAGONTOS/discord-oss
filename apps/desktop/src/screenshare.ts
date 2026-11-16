@@ -1,5 +1,6 @@
 import { BrowserWindow, type DesktopCapturerSource, desktopCapturer, ipcMain, type Session } from "electron";
 import { join } from "node:path";
+import { linkDesktopAudio, linuxAudioSupported, unlinkDesktopAudio } from "./venmic";
 
 interface PickedSource {
     id: string;
@@ -15,6 +16,7 @@ export const screenshareFeatureFlags = () => (process.platform === "darwin" ? ["
 let sources: DesktopCapturerSource[] = [];
 let picker: BrowserWindow | null = null;
 let settle: ((choice: PickedSource | null) => void) | null = null;
+let linuxAudioWanted = false;
 
 const fromPicker = (url: string | undefined) => !!url && url.startsWith("file:") && url.includes("/static/picker.html");
 
@@ -48,11 +50,19 @@ function choose(parent: BrowserWindow, preload: string, appRoot: string, audioRe
             picker = null;
             if (settle) finish(null);
         });
-        picker.loadFile(join(appRoot, "static", "picker.html"), { query: { audio: audioRequested && systemAudioSupported() ? "1" : "0" } });
+        picker.loadFile(join(appRoot, "static", "picker.html"), { query: { audio: audioRequested && (systemAudioSupported() || linuxAudioSupported()) ? "1" : "0" } });
     });
 }
 
 export function registerScreenshare(session: Session, options: { allowed: (origin: string) => boolean; parent: () => BrowserWindow | null; preload: string; appRoot: string }) {
+    ipcMain.handle("linuxaudio:start", (event) => {
+        if (!options.allowed(event.senderFrame?.url ?? "") || !linuxAudioWanted) return false;
+        linuxAudioWanted = false;
+        return linkDesktopAudio();
+    });
+    ipcMain.on("linuxaudio:stop", (event) => {
+        if (options.allowed(event.senderFrame?.url ?? "")) unlinkDesktopAudio();
+    });
     ipcMain.handle("picker:sources", async (event) => {
         if (!fromPicker(event.senderFrame?.url)) return [];
         sources = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 320, height: 180 }, fetchWindowIcons: true });
@@ -75,6 +85,7 @@ export function registerScreenshare(session: Session, options: { allowed: (origi
             if (!parent || !options.allowed(request.securityOrigin)) return callback({});
             choose(parent, options.preload, options.appRoot, request.audioRequested)
                 .then((choice) => {
+                    linuxAudioWanted = !!choice?.audio && !systemAudioSupported() && linuxAudioSupported();
                     const source = choice && sources.find((candidate) => candidate.id === choice.id);
                     if (!choice || !source) return callback({});
                     callback(choice.audio && systemAudioSupported() ? { video: source, audio: "loopback" } : { video: source });
