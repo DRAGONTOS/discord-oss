@@ -52,6 +52,11 @@ test("worker runtime maps support minified parameter names and multiple runtimes
     assert.deepEqual([...names].sort(), ["0123456789abcdef.css", "779eb8e658d40679.js", "fcb8bbf7d9775cef.js"]);
 });
 
+test("numeric chunk comparisons since build 673869, including exponent ids", () => {
+    const names = chunkNames('n.u=e=>{if(592e3===e)return""+e+".7648a91822d6a212.js";if(84993===e)return""+e+".2b930e1782f500bf.js"};');
+    assert.deepEqual([...names].sort(), ["592000.7648a91822d6a212.js", "84993.2b930e1782f500bf.js"]);
+});
+
 test("generation follows worker bootstrap chunks and their nested assets", async (t) => {
     const files = {
         "/app": '<script>window.GLOBAL_ENV={"BUILD_NUMBER":"1","VERSION_HASH":"abcdef"}</script><script src="/assets/web.0123456789abcdef.js"></script>',

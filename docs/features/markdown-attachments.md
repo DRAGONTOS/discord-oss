@@ -4,7 +4,7 @@ A text file attached to a message shows as a preview card with the file name, it
 
 ## Math
 
-The FosscordMarkdownMath plugin in `client/plugins/fosscordMarkdownMath` typesets LaTeX math in that preview with KaTeX 0.19.1. Discord's preview already splits math out of the text before the Markdown is parsed, so underscores, asterisks and backslashes inside a formula are left alone. Without the plugin it shows each formula as code.
+Discord's client typesets LaTeX math in that preview with its own copy of KaTeX since build 673869. Discord's preview splits math out of the text before the Markdown is parsed, so underscores, asterisks and backslashes inside a formula are left alone. Discord only knows the `$` delimiters. The FosscordMarkdownMath plugin in `client/plugins/fosscordMarkdownMath` adds `\(...\)` and `\[...\]` to its parser, which hands them to the same renderer, and keeps the collapsed card from cutting a formula in half.
 
 | Written as           | Shown as                                   |
 | -------------------- | ------------------------------------------ |
@@ -16,28 +16,14 @@ The FosscordMarkdownMath plugin in `client/plugins/fosscordMarkdownMath` typeset
 
 `$` delimiters follow Discord's rules: no space just inside the delimiters and no digit right after the closing `$`, so `$5 and $10` stays text. `\\(` is an escaped backslash followed by a parenthesis, not math. Math inside inline code or a fenced code block stays code. A delimiter that never closes stays text. The collapsed card normally shows the first 6 lines. When a `$$` or `\[` block is still open at line 6, it shows up to 30 more lines so the whole formula fits, and when the block doesn't close within those, it stops just before the block instead of showing half of it. Math inside code doesn't count. `scripts/tests/markdown-math-preview.test.cjs` covers this.
 
-The card and the whole-file dialog both render math. A formula wider than the card scrolls sideways. KaTeX draws with the current text colour, so it follows the dark and light themes. Turning off Render Markdown in the menu, or picking another language with `<>`, shows the raw source.
+The card and the whole-file dialog both render math. A display formula wider than the card scrolls sideways. Turning off Render Markdown in the menu, or picking another language with `<>`, shows the raw source.
 
 ## Safety
 
-The file comes from whoever sent it, so the plugin treats it as hostile.
+The file comes from whoever sent it, so it is treated as hostile.
 
 - Discord's renderer builds React elements from the Markdown tokens. HTML in the file is never parsed as HTML, `javascript:`, `data:` and other unsafe links are shown as their Markdown source, and images become links instead of being loaded.
-- Only the formula's KaTeX output is inserted as HTML. KaTeX runs with `trust: false`, so `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlStyle`, `\htmlId` and `\htmlData` render as red command names and nothing else. `maxExpand` is 1000 macro expansions and `maxSize` is 20 em, so a formula can't loop or draw a huge box.
-- A formula longer than 2,000 characters, or one that KaTeX can't parse, is shown as code the way the client shows it without the plugin.
-- Before the output is used, `isSafeMathMarkup` checks it against the tags and attributes KaTeX emits. Anything else, such as an `href`, an `on` handler, a `src` or a style with `url(`, makes the formula fall back to code.
-- The client fetches at most the first 50,000 bytes of a file and walks at most 5,000 Markdown tokens. Rendered formulas are cached, 256 at a time.
+- Only a formula's KaTeX output is inserted as HTML. Discord runs KaTeX with `trust: false` and `strict: "error"`, at most 1000 macro expansions and boxes of at most 20 em, and disables a list of commands.
+- A formula longer than 2,048 characters or nested more than 64 braces deep, or one that KaTeX can't parse, is shown as code. One preview renders at most 128 formulas, 16,384 characters of math, 50,000 HTML elements and 250 ms of KaTeX work. The client fetches at most the first 50,000 bytes of a file and walks at most 5,000 Markdown tokens.
 
-## Files
-
-KaTeX's JavaScript is bundled into `assets/vencord/vencord.js` through `pluginDependencies` in `client/vencord.json`, which adds about 280 KB. Its stylesheet and fonts are served by the instance from `assets/public/katex`, at `/assets/katex/katex.min.css` and `/assets/katex/fonts/`, next to KaTeX's MIT license. The plugin adds the stylesheet the first time it draws a formula, and the browser fetches a font only when a formula uses it. Only the `woff2` fonts are shipped, since every supported browser reads them. Nothing is loaded from a CDN.
-
-After changing the `katex` version in `package.json`, copy the new stylesheet and fonts over the served ones:
-
-```sh
-cp node_modules/katex/dist/katex.min.css assets/public/katex/
-cp node_modules/katex/dist/fonts/*.woff2 assets/public/katex/fonts/
-cp node_modules/katex/LICENSE assets/public/katex/
-```
-
-`scripts/tests/markdown-math.test.cjs` fails when the served stylesheet differs from the bundled version. It also covers the delimiters, the fallbacks and the hostile inputs, using `markdown-it` and `markdown-it-dollarmath`, the libraries and options Discord's preview uses.
+`scripts/tests/markdown-math.test.cjs` covers the added delimiters with `markdown-it` and `markdown-it-dollarmath`, the libraries and options Discord's preview uses.

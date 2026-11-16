@@ -155,7 +155,8 @@ test("native gradient toggle disables pending colors and restores the selected p
         useRef: (initial) => (remembered ??= { current: initial }),
     };
     const gradient = load("client/plugins/fosscordNoNitroUpsells/gradient.tsx", {
-        "@webpack/common": { React, Checkbox: "Checkbox", Text: "Text" },
+        "@webpack/common": { React, Checkbox: "Checkbox" },
+        "../fosscordCore/compat": { Text: "Text" },
     });
     assert.equal(gradient.renderGradientToggle({ user: { id: "self" }, guildId: "guild" }, [123, 456], [111, 222]), null);
     let selected;

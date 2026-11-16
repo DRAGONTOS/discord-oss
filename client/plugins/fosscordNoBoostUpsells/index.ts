@@ -44,7 +44,7 @@ export default definePlugin({
         {
             find: INCLUDED_IN_BOOSTING,
             replacement: {
-                match: /=function\(\i\)\{(?=let \i,\i,\i,\{guildFeature:)/,
+                match: /[=:]function\(\i\)\{(?=let \i,\i,\i,\{guildFeature:)/,
                 replace: "$&return null;",
             },
         },

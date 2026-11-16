@@ -1,6 +1,7 @@
 import definePlugin from "@utils/types";
 import { findStoreLazy } from "@webpack";
-import { RestAPI, Text, useEffect, useState, useStateFromStores } from "@webpack/common";
+import { RestAPI, useEffect, useState, useStateFromStores } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import managedStyle from "./style.css?managed";
@@ -344,7 +345,7 @@ export default definePlugin({
                     replace: "$1&&!1",
                 },
                 {
-                    match: /\(0,(\i)\.jsxs\)\("div",\{className:\i\.\i,children:\[(?:\(0,\1\.jsx\)\("div",\{className:\i\.\i\}\),)?\(0,\1\.jsx\)\(\i\.\i,\{className:\i\.\i,variant:"text-sm\/normal",children:\i\.intl\.string\(\i\.t#{intl::A5vswv::raw}\)\}\),\(0,\1\.jsx\)\(\i,\{\}\)\]\}\),((\i)\?\(0,\1\.jsx\)\("div",\{className:\i\.\i,children:\(0,\1\.jsx\)\(\i\.\i,\{\}\)\}\):\i)\]/,
+                    match: /\(0,(\i)\.jsxs\)\("div",\{className:\i\.\i,children:\[(?:\(0,\1\.jsx\)\("div",\{className:\i\.\i\}\),)?\(0,\1\.jsx\)\(\i\.\i,\{className:\i\.\i,variant:"[\w-]+\/normal",children:\i\.intl\.string\(\i\.t#{intl::A5vswv::raw}\)\}\),\(0,\1\.jsx\)\(\i,\{\}\)\]\}\),((\i)\?\(0,\1\.jsx\)\("div",\{className:\i\.\i,children:\(0,\1\.jsx\)\(\i\.\i,\{\}\)\}\):\i)\]/,
                     replace: "$2,!$3&&$self.renderCharts()]",
                 },
             ],

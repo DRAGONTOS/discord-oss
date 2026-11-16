@@ -1,6 +1,6 @@
 import definePlugin from "@utils/types";
 import { findStoreLazy } from "@webpack";
-import { GuildMemberStore, React, useStateFromStores } from "@webpack/common";
+import { React } from "@webpack/common";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 
@@ -9,7 +9,7 @@ const ApplicationWidgetConfigStore = findStoreLazy("ApplicationWidgetConfigStore
 };
 
 type AppWidget = { applicationId: string };
-type WidgetSplit = { applicationWidgets: AppWidget[]; collectionWidgets: unknown[] };
+type WidgetSplit = { applicationWidgets: AppWidget[] };
 const OWN_WIDGETS_TAB = "yourWidgets";
 const OWN_WIDGETS_LABEL = "Your Profile Widgets";
 
@@ -64,42 +64,25 @@ export default definePlugin({
         );
     },
 
-    useMemberVersion() {
-        return useStateFromStores([GuildMemberStore], () => (GuildMemberStore as unknown as { getMemberVersion(): number }).getMemberVersion());
-    },
-
     patches: [
-        {
-            find: "checkRecentlyTalkedOnEmptyQuery:!1,limit:15",
-            replacement: {
-                match: /(?=return\(0,\i\.jsx\)\(\i,\{selectActionComponent:\i,queryOptions:function\(\i\)\{return function\(\i,\i,\i\)\{let \i=\i\.\i\.getChannel)/,
-                replace: "$self.useMemberVersion();",
-            },
-        },
         // The Add Widget cards for app widgets say "Link your account to show off your game stats" until the app is linked over
         // OAuth. Widgets made in the developer portal have no account to link, so the line stays hidden unless linking is possible.
         {
             find: 'PLACEHOLDER_CONNECT",applicationId',
-            replacement: [
-                {
-                    match: /(\{hasAlreadyLinked:(\i),canStartAuthorization:(\i),startAuthorization:\i,fetched:(\i)\}=.{0,350}?return"default"!==\i\|\|null==\i)/,
-                    replace: "$1||($4&&!$2&&!$3)",
-                },
-                {
-                    match: /(\{hasAlreadyLinked:(\i),fetched:(\i)\}=\(0,\i\.\i\)\(\i\);return null==\i)/,
-                    replace: "$1||($3&&!$2)",
-                },
-            ],
+            replacement: {
+                match: /(\{hasAlreadyLinked:(\i),canStartAuthorization:(\i),startAuthorization:\i,fetched:(\i)\}=.{0,350}?return"default"!==\i\|\|null==\i)/,
+                replace: "$1||($4&&!$2&&!$3)",
+            },
         },
         {
             find: 'case"createYourOwn":return',
             replacement: [
                 {
-                    match: /(\{applicationWidgets:\i,collectionWidgets:\i)\}=(\i\.useMemo\(\(\)=>\(function\(\i\)\{.{0,200}?\}\)\(\i\),\[\i\]\))/,
+                    match: /(\{applicationWidgets:\i,(?:collectionWidgets|interestsWidgets):\i)\}=(\i\.useMemo\(\(\)=>\(function\(\i\)\{.{0,200}?\}\)\(\i\),\[\i\]\))/,
                     replace: "$1,fcOwnWidgets}=$self.splitOwnWidgets($2)",
                 },
                 {
-                    match: /return (\i)=(\i\|\|\i\?"gameStats"===(\i)\?\i\?\(0,\i\.jsx\)\("div",\{className:(\i\.\i),children:\(0,\i\.jsx\)\((\i),\{applicationWidgets:\i,dense:\i\.length>=20,handleAddWidget:(\i),isSubmitting:(\i),trackUserProfileEditAction:(\i),highlightedApplicationIds:\i\}\)\}\):\(0,\i\.jsx\)\((\i),)/,
+                    match: /return (\i)=(\i\|\|\i(?:\|\|\i)?\?(?:"fromYourServers"===\i\?.{0,300}?:)?"gameStats"===(\i)\?\i\?\(0,\i\.jsx\)\("div",\{className:(\i\.\i),children:\(0,\i\.jsx\)\((\i),\{applicationWidgets:\i,dense:\i\.length>=20,handleAddWidget:(\i),isSubmitting:(\i),trackUserProfileEditAction:(\i),highlightedApplicationIds:\i\}\)\}\):\(0,\i\.jsx\)\((\i),)/,
                     replace:
                         'return $1="yourWidgets"===$3?$self.ownWidgetsPanel({List:$5,Empty:$9,className:$4,widgets:fcOwnWidgets,handleAddWidget:$6,isSubmitting:$7,trackUserProfileEditAction:$8}):$2',
                 },

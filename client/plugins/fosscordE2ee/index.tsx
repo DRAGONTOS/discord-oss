@@ -136,8 +136,9 @@ export default definePlugin({
         {
             find: "unknown message type ",
             replacement: {
-                match: /\{type:(\i)\}=(\i),(\i)=(\i)\[\1\];/,
-                replace: "{type:$1}=$2,$3=$4[$1]??$self.systemMessage($1);",
+                // since build 673869 the message content is read between the type and the renderer lookup
+                match: /\{type:(\i)\}=(\i),(\{content:\i\}=\(0,\i\.\i\)\(\2,\i\),)?(\i)=(\i)\[\1\];/,
+                replace: "{type:$1}=$2,$3$4=$5[$1]??$self.systemMessage($1);",
             },
         },
         {

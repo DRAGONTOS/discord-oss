@@ -1,6 +1,6 @@
 import { getIntlMessageFromHash } from "@utils/discord";
 import definePlugin from "@utils/types";
-import { Text } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor, redirectTo } from "../fosscordCore/shared";
 

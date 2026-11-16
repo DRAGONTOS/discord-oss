@@ -64,6 +64,7 @@ export * from "./utility/webPush";
 export * from "./utility/reports";
 export * from "./utility/joinRequests";
 export * from "./utility/store";
+export * from "./utility/storefront";
 export * from "./utility/invitePreview";
 export * from "./utility/accountRemoval";
 export * from "./utility/accountIps";

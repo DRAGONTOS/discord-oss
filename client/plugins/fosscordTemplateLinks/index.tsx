@@ -1,6 +1,7 @@
 import definePlugin from "@utils/types";
 import type { JSX } from "react";
-import { GuildStore, NavigationRouter, RestAPI, Text, TextInput, useState } from "@webpack/common";
+import { GuildStore, NavigationRouter, RestAPI, TextInput, useState } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import managedStyle from "./style.css?managed";
@@ -135,9 +136,9 @@ export default definePlugin({
     patches: [
         {
             // the create server popup's first step, whose footer offers "Join a Server" for an invite
-            find: /onChooseTemplate:\i,onJoin:\i\}=/,
+            find: /onChooseTemplate:\i,onJoin:\i(?:,isSlideReady:\i)?\}=/,
             replacement: {
-                match: /(onClose:(\i),onChooseTemplate:\i,onJoin:\i\}=\i[\s\S]{0,3000}?"data-button-hoisted-classname-wrapper":!0,className:\i\.\i,children:\(0,\i\.jsx\)\((\i\.\$),\{variant:"secondary",fullWidth:!0,text:[^}]+?,onClick:\i\}\)\}\))/,
+                match: /(onClose:(\i),onChooseTemplate:\i,onJoin:\i(?:,isSlideReady:\i)?\}=\i[\s\S]{0,3000}?"data-button-hoisted-classname-wrapper":!0,className:\i\.\i,children:\(0,\i\.jsx\)\((\i\.\$),\{variant:"secondary",fullWidth:!0,text:[^}]+?,onClick:\i\}\)\}\))/,
                 replace: "$1,$self.renderTemplateLink({Button:$3,onClose:$2})",
             },
         },

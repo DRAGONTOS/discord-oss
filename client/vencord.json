@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/Equicord/Equicord",
-  "commit": "1489c0e2a4435d854d7343a5cfb0abb894772318",
+  "commit": "87dcb6a316a00616a99495f508b11b12b68c064a",
   "settings": {
     "autoUpdate": false,
     "autoUpdateNotification": false
@@ -44,5 +44,5 @@
   },
   "patches": "equicord-patches",
   "settingsKey": "EquicordSettings",
-  "pluginDependencies": ["katex", "mediabunny"]
+  "pluginDependencies": ["mediabunny"]
 }

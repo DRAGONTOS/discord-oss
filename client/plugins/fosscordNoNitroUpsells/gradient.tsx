@@ -1,4 +1,5 @@
-import { Checkbox, React, Text } from "@webpack/common";
+import { Checkbox, React } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 type ThemeColors = [number | null, number | null] | null;
 

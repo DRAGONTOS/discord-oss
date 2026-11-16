@@ -29,11 +29,11 @@ export default definePlugin({
             },
         },
         {
-            find: /\[\i\.\i\.KALAM\]:\i\.\i\};function \i\(\i\)\{return\{name:/,
+            find: /\[\i\.\i\.KALAM\]:\i\.\i(?:,\[\i\.\i\.\w+\]:\i\.\i)*\};function \i\(\i\)\{return\{name:/,
             all: true,
             replacement: [
                 {
-                    match: /(\[\i\.\i\.KALAM\]:\i\.\i)\}/,
+                    match: /(\[\i\.\i\.KALAM\]:\i\.\i(?:,\[\i\.\i\.\w+\]:\i\.\i)*)\}/,
                     replace: '$1,100:"fosscordInconsolata"}',
                 },
             ],

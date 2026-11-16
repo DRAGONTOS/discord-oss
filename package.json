@@ -79,7 +79,6 @@
     "image-size": "^2.0.4",
     "json-bigint": "^1.0.0",
     "jsonwebtoken": "^9.0.3",
-    "katex": "0.19.1",
     "mediabunny": "1.61.3",
     "morgan": "^1.12.1",
     "ms": "^2.1.3",

@@ -1,5 +1,5 @@
 diff --git a/src/api/Settings.ts b/src/api/Settings.ts
-index 1ce0038..3e95a30 100644
+index 67c8dea..840a675 100644
 --- a/src/api/Settings.ts
 +++ b/src/api/Settings.ts
 @@ -19,7 +19,7 @@
@@ -8,23 +8,25 @@ index 1ce0038..3e95a30 100644
  import { mergeDefaults } from "@utils/mergeDefaults";
 -import { DefinedSettings, OptionType, SettingsChecks, SettingsDefinition } from "@utils/types";
 +import { brand, DefinedSettings, OptionType, SettingsChecks, SettingsDefinition } from "@utils/types";
- import { React, useEffect } from "@webpack/common";
+ import { useEffect, useReducer } from "@webpack/common";
  
  import plugins from "~plugins";
-@@ -348,6 +348,11 @@ export function definePluginSettings<
+@@ -346,6 +346,13 @@ export function definePluginSettings<
      Checks extends SettingsChecks<Def>,
      PrivateSettings extends object = {}
  >(def: Def, checks?: Checks) {
 +    for (const option of Object.values(def) as any[]) {
 +        if (option && typeof option.description === "string") option.description = brand(option.description);
-+        if (Array.isArray(option?.options))
-+            option.options = option.options.map((choice: any) => typeof choice.label === "string" ? { ...choice, label: brand(choice.label) } : choice);
++        // options can be a getter that reads webpack modules, which aren't loaded yet when plugins are defined
++        const choices = option && Object.getOwnPropertyDescriptor(option, "options")?.value;
++        if (Array.isArray(choices))
++            option.options = choices.map((choice: any) => typeof choice.label === "string" ? { ...choice, label: brand(choice.label) } : choice);
 +    }
      if (checks) {
          for (const [name, check] of Object.entries(checks)) {
              Object.assign(def[name], check);
 diff --git a/src/utils/types.ts b/src/utils/types.ts
-index 335f68a..4ef728a 100644
+index 05070af..54f0e0a 100644
 --- a/src/utils/types.ts
 +++ b/src/utils/types.ts
 @@ -34,8 +34,19 @@ import type { Command, FluxEvents } from "@vencord/discord-types";

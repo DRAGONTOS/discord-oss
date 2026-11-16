@@ -52,7 +52,7 @@ export default definePlugin({
         {
             find: '"nitro-tab-group"',
             replacement: {
-                match: /\i\?(?=\(0,\i\.jsxs\)\("div",\{children:\[\(0,\i\.jsx\)\(\i,\{nitroTabButtonRef:)/,
+                match: /\i\?(?=\(0,\i\.jsxs\)\("div",\{(?:ref:[^,]{0,30},)?children:\[\(0,\i\.jsx\)\(\i,\{nitroTabButtonRef:)/,
                 replace: "!1?",
             },
         },
@@ -88,7 +88,7 @@ export default definePlugin({
         {
             find: NITRO_WHEEL_PATH,
             replacement: {
-                match: /function \i\(\i\)\{(?=let\{size:\i="md",width:\i,height:\i,color:\i=\i\.\i\.colors\.INTERACTIVE_ICON_DEFAULT,colorClass:\i="",\.\.\.\i\}=\i,.{0,500}?M16\.23 12c0 1\.29)/,
+                match: /function(?: \i)?\(\i\)\{(?=let\{size:\i="md",width:\i,height:\i,color:\i=\i\.\i\.colors\.INTERACTIVE_ICON_DEFAULT,colorClass:\i="",\.\.\.\i\}=\i,.{0,500}?M16\.23 12c0 1\.29)/,
                 replace: "$&return null;",
             },
         },
@@ -125,7 +125,7 @@ export default definePlugin({
             find: new RegExp(String.raw`${INCLUDED_WITH_PREMIUM}\)\}\),!\i&&`),
             replacement: {
                 match: new RegExp(
-                    String.raw`(\i\?)\(0,\i\.jsxs\)\("div",\{className:\i\.\i,children:\[\(0,\i\.jsx\)\(\i\.\i,\{variant:"text-md\/semibold",children:\i\.intl\.string\(\i\.t${INCLUDED_WITH_PREMIUM}\)\}\),!\i&&\(0,\i\.jsx\)\(\i\.\i,\{[^{}]*?children:\i\.intl\.string\(\i\.t#{intl::nKdAlO::raw}\)\}\)\]\}\)`,
+                    String.raw`(\i\?)\(0,\i\.jsxs\)\("div",\{className:\i\.\i,children:\[\(0,\i\.jsx\)\(\i\.\i,\{variant:"[\w-]+\/semibold",children:\i\.intl\.string\(\i\.t${INCLUDED_WITH_PREMIUM}\)\}\),!\i&&\(0,\i\.jsx\)\(\i\.\i,\{[^{}]*?children:\i\.intl\.string\(\i\.t#{intl::nKdAlO::raw}\)\}\)\]\}\)`,
                 ),
                 replace: "$1null",
             },
@@ -133,7 +133,7 @@ export default definePlugin({
         {
             find: /color:"text-muted",children:\i\.intl\.string\(\i\.t#{intl::nKdAlO::raw}\)/,
             replacement: {
-                match: /\i(?=&&\(0,\i\.jsx\)\(\i\.\i,\{variant:"text-xxs\/normal",color:"text-muted",children:\i\.intl\.string\(\i\.t#{intl::nKdAlO::raw}\)\}\))/,
+                match: /\i(?=&&\(0,\i\.jsx\)\(\i\.\i,\{variant:"[\w-]+\/normal",color:"text-muted",children:\i\.intl\.string\(\i\.t#{intl::nKdAlO::raw}\)\}\))/,
                 replace: "!1",
             },
         },

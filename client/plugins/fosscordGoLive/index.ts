@@ -46,10 +46,10 @@ export default definePlugin({
             },
         },
         {
-            find: '"VideoInput: Already destroyed"',
+            find: ".acquire({audio:!1,video:",
             replacement: {
-                match: /(\i)\.some\((\i)=>\2\.id===this\.sourceId\)&&\((\i)\.deviceId=this\.sourceId\)/,
-                replace: "$1.some($2=>$2.id===this.sourceId)&&($3.deviceId={exact:this.sourceId})",
+                match: /(\i)\.some\((\i)=>\2\.id===(\i)\)&&\((\i)\.deviceId=\3\)(?=;try\{let \i=await \i\.acquire\(\{audio:!1,video:\4\}\))/,
+                replace: "$1.some($2=>$2.id===$3)&&($4.deviceId={exact:$3})",
             },
         },
     ],

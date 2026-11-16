@@ -1,5 +1,5 @@
 import definePlugin from "@utils/types";
-import { Text } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import managedStyle from "./style.css?managed";

@@ -29,7 +29,7 @@ export default definePlugin({
         {
             find: ".DISCOVERY_QUEST_TAB_CLICKED,{",
             replacement: {
-                match: /(function \i\((\i)\)\{)(let\{tab:\i\}=\i,\i=\i\.\i\.useField\("selectedTab"\).{0,200}?case (\i\.GlobalDiscoveryTab)\.QUESTS:)/,
+                match: /(function \i\((\i)\)\{)(let\{tab:\i\}=\i,\i=\i\.\i\.useField\("selectedTab"\).{0,400}?case (\i\.GlobalDiscoveryTab)\.QUESTS:)/,
                 replace: "$1if($2.tab===$4.QUESTS)return null;$3",
             },
         },
