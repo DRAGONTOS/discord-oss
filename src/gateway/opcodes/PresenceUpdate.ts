@@ -1,6 +1,6 @@
 import { Session } from "@spacebar/database";
 import { WebSocket, Payload, isSettableStatus } from "@spacebar/gateway";
-import { broadcastPresence, emitSessionsReplace, sanitizeActivities } from "@spacebar/util";
+import { broadcastPresence, clientStatusFor, emitSessionsReplace, sanitizeActivities } from "@spacebar/util";
 import { ActivitySchema, PrivateStatus } from "@spacebar/schemas";
 import { check } from "./instanceOf";
 import { ProcessLifecycle } from "@spacebar/util/util/ProcessLifecycle";
@@ -35,7 +35,7 @@ export async function onPresenceUpdate(this: WebSocket, { d }: Payload) {
     if (presence.status !== this.session.status && (await isSettableStatus(this.user_id, presence.status))) this.session.status = presence.status as PrivateStatus;
     this.session.activities = sanitizeActivities(presence.activities, this.session.activities);
     const platform = this.session.client_info?.platform ?? "web";
-    this.session.client_status = this.session.status === "invisible" ? {} : { [platform]: this.session.status };
+    this.session.client_status = clientStatusFor(platform, this.session.status);
     this.session.last_seen = new Date();
 
     if (previous === JSON.stringify([this.session.status, this.session.activities, this.session.client_status])) return;

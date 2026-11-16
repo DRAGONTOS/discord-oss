@@ -80,6 +80,13 @@ const PresencePriority: Record<string, number> = { testing: 0, dnd: 0, online: 1
 const ClientPlatforms = ["desktop", "mobile", "web", "embedded", "vr"] as const;
 export type ClientPlatform = (typeof ClientPlatforms)[number];
 
+// Clients draw the phone and headset status icons only when the user is "online" on that platform (isMobileOnline and
+// isVROnline), so the per-platform entries report the testing status as online and those icons follow the device. The
+// top-level status stays "testing", which keeps its blue colour and quiet notifications.
+export const platformStatus = (status: string) => (status === "testing" ? "online" : status);
+
+export const clientStatusFor = (platform: string, status: string): ClientStatus => (status === "invisible" ? {} : { [platform]: platformStatus(status) });
+
 export function getClientPlatform(properties?: { browser?: string; $browser?: string; os?: string; $os?: string }): ClientPlatform {
     const browser = (properties?.browser ?? properties?.$browser ?? "").toLowerCase();
     const os = (properties?.os ?? properties?.$os ?? "").toLowerCase();
@@ -230,6 +237,8 @@ export function aggregatePresence(sessions: PresenceSession[]): AggregatedPresen
             activities.push(activity);
         }
     }
+
+    for (const platform of ClientPlatforms) if (client_status[platform]) client_status[platform] = platformStatus(client_status[platform]!);
 
     return {
         status: status as PublicStatus,
