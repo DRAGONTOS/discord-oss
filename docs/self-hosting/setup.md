@@ -168,13 +168,15 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 
 ### Automatic updates
 
-`scripts/auto-update.sh` fast-forwards the branch, rebuilds, runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A failed build moves the checkout back, a checkout with local commits is left alone, and the script exits with code 1 when a step failed and nothing changed, or when the server doesn't answer after an update. Set `UPDATE_CLIENT=0`, because its client step downloads whatever build discord.com serves, without a backup.
+`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so cron can run it every 2 minutes and a merge to `main` is live a few minutes later:
 
 ```cron
-17 */6 * * * UPDATE_CLIENT=0 /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
+*/2 * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
 ```
 
-The script also reads `ENV_FILE`, `UPDATE_CODE=0` to skip the code, `SERVER_PORT` from its own environment and not from the env file, `NOTIFY_WEBHOOK` for a Discord-compatible webhook that gets each result, and `LOCK_FILE`.
+When a build or the client download fails, the checkout goes back to the running commit, the old images stay or are rebuilt, and the script exits with code 1. The failed commit is remembered in `/tmp/fosscord-auto-update.lock.failed`, so it is reported once and not rebuilt every run; the next commit on the branch is tried as usual, and deleting the file retries the same one. A checkout with local commits or changes is left alone. The client download replaces the web client without the backup that [Updates](#updates) makes by hand.
+
+The script also reads `ENV_FILE`, `UPDATE_CODE=0` to skip the code, `UPDATE_CLIENT=0` to skip the client download, `SERVER_PORT` from its own environment and not from the env file, `NOTIFY_WEBHOOK` for a Discord-compatible webhook that gets each result, `LOCK_FILE` and `FAILED_FILE`.
 
 ## Optional content
 

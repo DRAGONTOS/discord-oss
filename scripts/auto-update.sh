@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 #
-# Keeps a Docker Compose deployment up to date: pulls new commits of the checked out branch and rebuilds, and fetches
-# Discord's newest web client when discord.com serves a new build. Meant for cron, see "Automatic updates" in
-# docs/self-hosting/setup.md. Every step is skipped when there is nothing new, so it is cheap to run often.
+# Keeps a Docker Compose deployment up to date: pulls new commits of the checked out branch, rebuilds, downloads the
+# web client again when the pulled code pins a different Discord build (client/release.json) and restarts. Meant for
+# cron every few minutes, so a merge to main reaches the instance shortly after, see "Automatic updates" in
+# docs/self-hosting/setup.md. A run with nothing new only does a git fetch.
 #
 # Settings, all optional, as environment variables:
 #   ENV_FILE        compose env file, when it isn't .env (for example prod.env)
-#   UPDATE_CODE     0 to leave the code alone and only update the web client
+#   UPDATE_CODE     0 to leave the code alone and only check the web client
 #   UPDATE_CLIENT   0 to leave the web client alone and only update the code
 #   SERVER_PORT     the server's port on the host, 32171 unless you changed it in the env file
 #   NOTIFY_WEBHOOK  a Discord or Fosscord webhook URL that gets a message when something was updated or went wrong
 #   LOCK_FILE       where the lock that stops two runs overlapping lives, /tmp/fosscord-auto-update.lock by default
+#   FAILED_FILE     remembers a commit whose update failed, so it isn't retried every run, $LOCK_FILE.failed by default
 
 set -euo pipefail
 
@@ -42,6 +44,7 @@ else
     trap 'rmdir "$LOCK_FILE.d"' EXIT
 fi
 
+FAILED_FILE=${FAILED_FILE:-$LOCK_FILE.failed}
 code_updated=0
 client_updated=0
 failed=0
@@ -52,6 +55,11 @@ if [ "${UPDATE_CODE:-1}" != 0 ]; then
     local_head=$(git rev-parse HEAD)
     upstream=$(git rev-parse '@{u}')
     if [ "$local_head" != "$upstream" ]; then
+        if [ "$(cat "$FAILED_FILE" 2>/dev/null)" = "$upstream" ]; then
+            # already reported; a new commit upstream, or deleting $FAILED_FILE, tries again
+            log "$(git rev-parse --short "$upstream") failed to update before, waiting for a newer commit"
+            exit 1
+        fi
         if git merge --ff-only --quiet "$upstream"; then
             log "pulled $(git rev-parse --short "$local_head")..$(git rev-parse --short HEAD), rebuilding the images"
             if REVISION=$(git rev-parse HEAD) REVISION_TIME=$(git log -1 --format=%ct) compose build; then
@@ -59,36 +67,47 @@ if [ "${UPDATE_CODE:-1}" != 0 ]; then
             else
                 notify "Auto-update: building $(git rev-parse --short HEAD) failed, the running version stays up."
                 failed=1
-                # back to the commit that is running, so the next run tries the build again; --keep leaves local edits alone
+                echo "$upstream" >"$FAILED_FILE"
+                # back to the commit that is running; --keep leaves local edits alone
                 git reset --quiet --keep "$local_head"
             fi
         else
             notify "Auto-update: the checkout can't fast-forward to $(git rev-parse --short "$upstream") (local commits or changes?), skipped the code update."
             failed=1
+            echo "$upstream" >"$FAILED_FILE"
         fi
     fi
 fi
 
-# 2. web client: download it again only when discord.com serves a different build
+# 2. web client: the server refuses to start on a client build other than the one client/release.json pins, so when
+# the pin moved, download the pinned build with the new image before anything restarts
 if [ "${UPDATE_CLIENT:-1}" != 0 ]; then
-    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
     build_of() { grep -o '"BUILD_NUMBER":"[0-9]*"' | head -n1 | grep -o '[0-9][0-9]*' || true; }
-    latest=$(curl -fsSL -m 30 -A "$user_agent" https://discord.com/app | build_of || true)
+    pinned=$(grep -o '"buildNumber": *"[0-9]*"' client/release.json | grep -o '[0-9][0-9]*' || true)
     current=$(compose run --rm --no-deps -T --entrypoint sh client -c 'cat assets/cache/index.html 2>/dev/null || true' | build_of) || current=""
-    if [ -z "$latest" ]; then
-        log "could not read the current build from discord.com, skipping the client"
-    elif [ "$latest" != "$current" ]; then
-        log "discord.com serves build $latest, the instance has ${current:-none}, downloading it"
+    if [ -n "$pinned" ] && [ "$pinned" != "$current" ]; then
+        log "client/release.json pins build $pinned, the instance has ${current:-none}, downloading it"
         # client.js only adds files and publishes the new index.html last, when every asset arrived, so the running
         # server keeps serving the old build until it restarts, and a failed download changes nothing
         if compose run --rm --no-deps -T client client --force; then
             client_updated=1
         else
-            notify "Auto-update: downloading web client build $latest failed, build ${current:-none} stays."
             failed=1
+            if [ "$code_updated" = 1 ]; then
+                # the new code would refuse the old client, so stay on the running commit and rebuild its images
+                notify "Auto-update: downloading client build $pinned for $(git rev-parse --short HEAD) failed, staying on $(git rev-parse --short "$local_head")."
+                echo "$upstream" >"$FAILED_FILE"
+                git reset --quiet --keep "$local_head"
+                REVISION=$(git rev-parse HEAD) REVISION_TIME=$(git log -1 --format=%ct) compose build || true
+                code_updated=0
+            else
+                notify "Auto-update: downloading client build $pinned failed, build ${current:-none} stays."
+            fi
         fi
     fi
 fi
+
+[ "$code_updated" = 1 ] && rm -f "$FAILED_FILE"
 
 # 3. restart what changed and check that it came back
 if [ "$code_updated" = 1 ]; then
@@ -107,7 +126,7 @@ fi
 port=${SERVER_PORT:-32171}
 summary=""
 [ "$code_updated" = 1 ] && summary="code $(git rev-parse --short HEAD)"
-[ "$client_updated" = 1 ] && summary="${summary:+$summary and }web client build $latest"
+[ "$client_updated" = 1 ] && summary="${summary:+$summary and }web client build $pinned"
 # a rebuilt server runs its migrations and the client service first, so give it a few minutes
 for _ in $(seq 1 60); do
     if curl -fsS -m 5 "http://127.0.0.1:$port/api/ping" >/dev/null 2>&1; then
