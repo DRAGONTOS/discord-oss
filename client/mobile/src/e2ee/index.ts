@@ -1,11 +1,10 @@
-import type { Attachments } from "../../../e2ee/src/attachments";
 import { randomBytes, toB64u } from "../../../e2ee/src/bytes";
 import { aesDecrypt, aesEncrypt, exportPublic, generateAgreementKey, generateSigningKey, hpkeOpen, hpkeSeal, sign, verify } from "../../../e2ee/src/crypto";
-import { type Api, Engine, errorText, type RawMessage } from "../../../e2ee/src/engine";
-import type { Payload } from "../../../e2ee/src/files";
+import { type Api, Engine, errorText } from "../../../e2ee/src/engine";
 import { createHooks, type MessageState } from "../../../e2ee/src/hooks";
 import { createLink, type LinkEvent } from "../../../e2ee/src/link";
 import type { Dispatcher, FluxAction, GatewayStore, HttpClient } from "../../../e2ee/src/webpack";
+import { createMobileAttachments } from "./attachments";
 import { knownAnswers } from "./kat";
 import { findRandomSource } from "./random";
 import { type KeyValueBackend, useBackend } from "./store";
@@ -139,25 +138,12 @@ export const createMobileE2ee = (options: MobileE2eeOptions) => {
 
     const engine = new Engine(api, classifyChannel, () => options.trustServer);
 
-    const attachments = {
-        start: () => {},
-        ready: () => Promise.resolve(false),
-        prepareCreate: () => {
-            throw new Error("Files can't be encrypted in the Android app yet");
-        },
-        isUpload: () => false,
-        prepareUpload: () => {
-            throw new Error("Files can't be encrypted in the Android app yet");
-        },
-        uploaded: () => {},
-        metaFor: () => null,
-        sent: () => {},
-        apply: (message: RawMessage, payload: Payload) => {
-            message.content = payload.content;
-            if (payload.stickers?.length) message.sticker_items = payload.stickers.map(({ id, name, format_type }) => ({ id, name, format_type }));
-        },
-        nameOf: () => undefined,
-    } as unknown as Attachments;
+    const attachments = createMobileAttachments({
+        files: () => options.nativeModule("NativeFileModule"),
+        origin: apiBase,
+        redraw: (message) => found.dispatcher?.dispatch({ type: "MESSAGE_UPDATE", message, e2eeLocal: true }),
+        log,
+    });
 
     const link = createLink(engine, api, {
         onPrompt: (prompt) => {
