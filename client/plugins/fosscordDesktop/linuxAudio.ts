@@ -33,7 +33,12 @@ export async function addLinuxDesktopAudio(stream: MediaStream): Promise<void> {
     if (!native || stream.getAudioTracks().length) return;
     if (!(await native.start().catch(() => false))) return;
 
-    const release = () => native.stop();
+    let released = false;
+    const release = () => {
+        if (released) return;
+        released = true;
+        native.stop();
+    };
     try {
         const device = await findDevice();
         if (!device) return release();
@@ -43,12 +48,23 @@ export async function addLinuxDesktopAudio(stream: MediaStream): Promise<void> {
         const [track] = capture.getAudioTracks();
         if (!track) return release();
         stream.addTrack(track);
-        const done = () => {
-            track.stop();
+
+        const stopAudio = track.stop.bind(track);
+        track.stop = () => {
+            stopAudio();
             release();
         };
-        stream.getVideoTracks()[0]?.addEventListener("ended", done, { once: true });
         track.addEventListener("ended", release, { once: true });
+
+        const video = stream.getVideoTracks()[0];
+        if (video) {
+            const stopVideo = video.stop.bind(video);
+            video.stop = () => {
+                stopVideo();
+                track.stop();
+            };
+            video.addEventListener("ended", () => track.stop(), { once: true });
+        }
     } catch {
         release();
     }
