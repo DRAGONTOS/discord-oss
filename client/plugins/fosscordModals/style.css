@@ -1,7 +1,7 @@
-[class*="layerContainer__"] > [class*="scrim__"] {
+[class*="layerContainer_"] > [class*="scrim_"] {
     z-index: -1;
 }
 
-[class*="layerContainer__"] > [class*="layer_"][class*="inactive_"] {
+[class*="layerContainer_"] > [class*="layer_"][class*="inactive_"] {
     z-index: -2;
 }

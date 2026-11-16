@@ -1284,7 +1284,7 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
     const decorateHeader = (channelId: string | null) => {
         const existing = document.querySelector<HTMLButtonElement>(".fe2ee-toggle");
         if (!channelId) return existing?.remove();
-        const toolbars = [...document.querySelectorAll<HTMLElement>('[class*="toolbar__"]')];
+        const toolbars = [...document.querySelectorAll<HTMLElement>('[class*="toolbar_"]')];
         const toolbar = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
         if (!toolbar) return;
         const on = engine.isEncrypted(channelId);
