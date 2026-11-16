@@ -3,6 +3,7 @@ import { authorizationFrom } from "./authorization";
 import { createMobileE2ee } from "./e2ee";
 import { registerUnifiedPush } from "./push";
 import { createRewriter, type Endpoints, endpointsFromOrigin, rewriteValue } from "./rewrite";
+import { patchStatusExports } from "./status";
 import { createInstanceSwitcher, originOf } from "./switcher";
 import { sanitizeUserSearchMessage } from "./userSearch";
 
@@ -168,6 +169,15 @@ const start = () => {
             log(`e2ee module scan failed: ${String(error)}`);
         }
         if (exports === null || (typeof exports !== "object" && typeof exports !== "function")) return exports;
+        try {
+            const replaced = patchStatusExports(exports);
+            if (replaced) {
+                mark(`testing status in ${Object.keys(replaced).join(", ")}`);
+                return override(exports, replaced);
+            }
+        } catch (error) {
+            log(`status scan failed: ${String(error)}`);
+        }
         try {
             const replaced = switcher.inspect(exports);
             if (replaced) {
