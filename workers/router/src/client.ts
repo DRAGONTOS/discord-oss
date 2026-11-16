@@ -176,6 +176,8 @@ const renderClient = async (client: ClientBundle, settings: InstanceSettings) =>
         maxGroupDmRecipients: settings.maxGroupDmRecipients,
         emailRequired: settings.emailRequired,
         joinReason: settings.joinReason,
+        // the native voice engine needs the Pion SFU's UDP port next to the server, which a Worker deployment doesn't have
+        nativeVoice: false,
     };
     const title = escapeTitle(settings.instanceName);
     const inject = `${clientEnvScript(client.base, envSettings)}\n${vencordScriptTag(client.vencordHash)}\n${client.patches}`;
