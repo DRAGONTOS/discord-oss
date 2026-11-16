@@ -53,8 +53,8 @@ if (location.protocol === "file:") {
         linuxAudio: {
             start: (): Promise<boolean> => ipcRenderer.invoke("linuxaudio:start"),
             stop: () => ipcRenderer.send("linuxaudio:stop"),
-            },
-        });
+        },
+    });
     webFrame.executeJavaScript(
         `(() => {
             const Native = window.Notification;
