@@ -27,7 +27,7 @@ const verify = (actual) => {
         if (actual[key] !== expected[key]) throw new Error(`Unreviewed client release: ${key} differs from client/release.json`);
     return actual;
 };
-const RELEASE_REPOSITORY = "meowcorded/meowcord";
+const RELEASE_REPOSITORY = "wypiek/discord-oss";
 const pinnedIndexUrl = () => {
     if (process.env.CLIENT_INDEX_URL) return process.env.CLIENT_INDEX_URL;
     const { buildNumber } = JSON.parse(fs.readFileSync(releasePath, "utf8"));

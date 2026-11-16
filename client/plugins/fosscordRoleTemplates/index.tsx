@@ -1,5 +1,6 @@
 import definePlugin from "@utils/types";
-import { FluxDispatcher, PermissionsBits, PermissionStore, Text, showToast } from "@webpack/common";
+import { FluxDispatcher, PermissionsBits, PermissionStore, showToast } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import managedStyle from "./style.css?managed";

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Button as NativeButton, Forms, Text, TextInput } from "@webpack/common";
+import { TextInput } from "@webpack/common";
+import { Button as NativeButton, Forms, Text } from "./compat";
 
 export function SettingsSection({ title, description, className, children }: { title: string; description?: string; className?: string; children: ReactNode }) {
     return (

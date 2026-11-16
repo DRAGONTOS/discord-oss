@@ -18,7 +18,8 @@ export default definePlugin({
             find: '"getGroupDMRecipientLimit"',
             all: true,
             replacement: {
-                match: /return (\i)\?\.isStaff\(\)\?\i\.\i:\i&&\(0,\i\.\i\)\(\1,\i\.PremiumTypes\.TIER_2\)&&\(0,\i\.\i\)\("getGroupDMRecipientLimit"\)\.enabled\?25:\i\.\i/,
+                // staff and the limits were constants (isStaff()?X.Y:...?25:X.Z) before build 673869, inline since (isStaff()||...?25:10)
+                match: /return (\i)\?\.isStaff\(\)(?:\?\i\.\i:|\|\|)\i&&\(0,\i\.\i\)\(\1,\i\.PremiumTypes\.TIER_2\)&&\(0,\i\.\i\)\("getGroupDMRecipientLimit"\)\.enabled\?25:(?:\i\.\i|\d+)/,
                 replace: "return $self.groupDmRecipientLimit()",
             },
         },

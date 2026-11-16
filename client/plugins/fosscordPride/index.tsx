@@ -1,7 +1,8 @@
 import ErrorBoundary from "@components/ErrorBoundary";
 import { ModalCloseButton, ModalContent, ModalHeader, ModalRoot, ModalSize, openModal } from "@utils/modal";
 import definePlugin, { StartAt } from "@utils/types";
-import { Checkbox, FluxDispatcher, ReactDOM, RestAPI, Text, UserStore, useEffect, useState, useStateFromStores } from "@webpack/common";
+import { Checkbox, FluxDispatcher, ReactDOM, RestAPI, UserStore, useEffect, useState, useStateFromStores } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import { SettingsSection, Field, Button } from "../fosscordCore/ui";
@@ -265,7 +266,7 @@ export default definePlugin({
                     replace: "$1=($2||$self.hasFlags($5))$4",
                 },
                 {
-                    match: /\(0,\i\.jsx\)\(\i\.\i,\{text:\i\.intl\.string\(\i\.t\.GI2A8C\),delay:\i\.\i,ariaHidden:!0,children:\(0,\i\.jsx\)\("span",\{className:\i\.\i,children:\(0,\i\.jsx\)\(\i,\{pronouns:(\i)\}\)\}\)\}\)/,
+                    match: /\(0,\i\.jsx\)\(\i\.\i,\{text:\i\.intl\.string\(\i\.t\.GI2A8C\),delay:(?:\i\.\i|\d+),ariaHidden:!0,children:\(0,\i\.jsx\)\("span",\{className:\i\.\i,children:\(0,\i\.jsx\)\(\i,\{pronouns:(\i)\}\)\}\)\}\)/,
                     replace: "$self.pronounsWithFlags($1,$&,arguments[0]?.user)",
                 },
             ],

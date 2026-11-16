@@ -168,7 +168,7 @@ export default definePlugin({
             ],
         },
         {
-            find: "GameProfileTrackActionActions.ClaimGame",
+            find: ".ClaimGame);",
             replacement: {
                 match: /(\i\.linkedApplications\?\.some\(\i=>\i\.type===\i\.\i\.OFFICIAL\))\?null:/,
                 replace: "$1||!0?null:",

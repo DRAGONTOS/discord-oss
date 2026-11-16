@@ -9,7 +9,6 @@ import {
     Popout,
     RelationshipStore,
     RestAPI,
-    Text,
     TextInput,
     TypingStore,
     UserStore,
@@ -17,6 +16,7 @@ import {
     useState,
     useStateFromStores,
 } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 import type { ReactNode } from "react";
 
 import { FosscordAuthor } from "../fosscordCore/shared";

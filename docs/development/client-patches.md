@@ -24,7 +24,7 @@ The default set leaves out every plugin that talks to a third-party service on l
 
 To move to a newer Equicord, change `commit` in `client/vencord.json`, rebuild and run the check below.
 
-The pinned source is Equicord `1489c0e2a4435d854d7343a5cfb0abb894772318`. The legacy `build:vencord` command, `.vencord` cache, `assets/vencord` URLs and `client/vencord.json` filename remain compatible. Existing browser `VencordSettings` are copied to `EquicordSettings` only when Equicord settings are absent. QuickCSS keeps its existing storage. SilentTyping retains its previous global enabled choice, and new browsers keep typing visible. New-plugin notifications are disabled by default.
+The pinned source is Equicord `87dcb6a316a00616a99495f508b11b12b68c064a` (v1.15.17.3). The legacy `build:vencord` command, `.vencord` cache, `assets/vencord` URLs and `client/vencord.json` filename remain compatible. Existing browser `VencordSettings` are copied to `EquicordSettings` only when Equicord settings are absent. QuickCSS keeps its existing storage. SilentTyping retains its previous global enabled choice, and new browsers keep typing visible. New-plugin notifications are disabled by default.
 
 The build reads `patches` and `settingsKey` from `client/vencord.json` and points the cached `.vencord` checkout at the configured repository before it fetches the commit. The Docker build bootstraps the exact pnpm version Equicord declares instead of running `bunx pnpm`, and calls pnpm's Node entry point, because pnpm 12 ships a launcher without a shebang when its install scripts are blocked and Bun cannot spawn it.
 
@@ -36,10 +36,10 @@ Custom plugin dependencies listed in `pluginDependencies` are linked from the ro
 
 For a new build, download into an empty staging directory with `CLIENT_CACHE_PATH=/tmp/meowcord-client-review CLIENT_RELEASE_REVIEW=1 bun scripts/client.js`. The review switch permits a staging download; it does not bypass server verification. Run `CLIENT_CACHE_PATH=/tmp/meowcord-client-review bun scripts/client-release.js --record` to prepare a candidate pin. Run the E2EE anchor check, the Equicord reporter and the full browser encryption test against a disposable server serving that exact staging cache before committing the pin. Keep the download, `release-manifest.json` and generated Equicord assets outside git. A changing upstream build fails the release gate until it has been reviewed.
 
-Discord keeps serving the hashed assets of older builds, but `/app` only returns the current index. So `scripts/client.js` downloads the reviewed index from the `client-<buildNumber>` GitHub release, at `https://github.com/meowcorded/meowcord/releases/download/client-<buildNumber>/index.html`, and fetches every asset it references from Discord. `CLIENT_INDEX_URL` points it at another copy. When that release is missing, it falls back to the current `/app`, which fails the gate if the build has moved on. With `CLIENT_RELEASE_REVIEW=1` it always uses `/app`. After committing a new pin, publish its index from the staging cache:
+Discord keeps serving the hashed assets of older builds, but `/app` only returns the current index. So `scripts/client.js` downloads the reviewed index from the `client-<buildNumber>` GitHub release, at `https://github.com/wypiek/discord-oss/releases/download/client-<buildNumber>/index.html`, and fetches every asset it references from Discord. `CLIENT_INDEX_URL` points it at another copy. When that release is missing, it falls back to the current `/app`, which fails the gate if the build has moved on. With `CLIENT_RELEASE_REVIEW=1` it always uses `/app`. After committing a new pin, publish its index from the staging cache:
 
 ```sh
-gh release create client-BUILD /tmp/meowcord-client-review/index.html --repo meowcorded/meowcord --title "Client BUILD" --notes "Reviewed Discord web client index for build BUILD." --prerelease --latest=false
+gh release create client-BUILD /tmp/meowcord-client-review/index.html --repo wypiek/discord-oss --title "Client BUILD" --notes "Reviewed Discord web client index for build BUILD." --prerelease --latest=false
 ```
 
 ## Adding a patch

@@ -115,9 +115,10 @@ page.on("pageerror", (error) => {
 });
 
 const started = Date.now();
-await page.goto(`${origin}/login`);
-await page.waitForFunction(() => typeof window.Vencord?.Webpack?._initReporter === "function" && typeof window.Vencord?.Webpack?.wreq === "function", null, { timeout });
-if (!loadingChunks) await page.evaluate(() => Vencord.Webpack._initReporter());
+await page.goto(`${origin}/login`, { timeout });
+await page.waitForFunction(() => typeof window.Vencord?.Webpack?.wreq === "function", null, { timeout });
+// Equicord before v1.15.17 waits for _initReporter; newer reporter builds start by themselves once webpack loads
+if (!loadingChunks) await page.evaluate(() => Vencord.Webpack._initReporter?.());
 const outcome = await Promise.race([finished, new Promise((resolve) => setTimeout(() => resolve("timeout"), timeout))]);
 await browser.close().catch(() => {});
 

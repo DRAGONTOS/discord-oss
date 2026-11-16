@@ -74,29 +74,6 @@ export default definePlugin({
 
     renderSpinner: (props: { className?: string; onReady?: () => void; setRef?: (element: HTMLElement | null) => void }) => <MeowcordSpinner {...props} />,
 
-    renderWordmark: (className: string) =>
-        imageUrl(env().INSTANCE_LOGO) ? (
-            <img className={className} src={env().INSTANCE_LOGO} alt={instanceName()} style={{ height: 24, width: "auto", objectFit: "contain" }} />
-        ) : (
-            <div
-                className={className}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    height: 24,
-                    color: "#fff",
-                    fontFamily: 'var(--font-display, "gg sans", sans-serif)',
-                    fontSize: 20,
-                    fontWeight: 800,
-                    lineHeight: "24px",
-                }}
-            >
-                <Icon size={24} />
-                {instanceName()}
-            </div>
-        ),
-
     start() {
         originalOpen = window.open;
         window.open = function (url?: string | URL, ...rest: any[]) {
@@ -115,13 +92,6 @@ export default definePlugin({
             replacement: {
                 match: /(\i\.reset=function\(\)\{[^{}]*?)\i\.setIcon\(\i\)/,
                 replace: "$1$self.restoreFavicon()",
-            },
-        },
-        {
-            find: "setAuthLogoHidden=",
-            replacement: {
-                match: /(\i\?null:)\(0,\i\.jsx\)\("img",\{className:(\i\.\i),src:\i,alt:""\}\)/,
-                replace: "$1$self.renderWordmark($2)",
             },
         },
         {
@@ -241,7 +211,7 @@ export default definePlugin({
         {
             find: ".NEW_TO_APPS,numItems:1",
             replacement: {
-                match: /function \i\(\i\)\{(?=let\{padding:\i=!1\}=\i,\i=\i\.useCallback\(\(\)=>\{\(0,\i\.\i\)\(\i\.\i\.getAppsSupportURL\()/,
+                match: /function(?: \i)?\(\i\)\{(?=let\{padding:\i=!1\}=\i,\i=\i\.useCallback\(\(\)=>\{\(0,\i\.\i\)\(\i\.\i\.getAppsSupportURL\()/,
                 replace: "$&if(!$self.helpUrl())return null;",
             },
         },

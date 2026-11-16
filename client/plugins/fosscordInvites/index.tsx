@@ -1,7 +1,8 @@
 import SettingsPlugin from "@plugins/_core/settings";
 import { copyWithToast } from "@utils/discord";
 import definePlugin, { IconProps, StartAt } from "@utils/types";
-import { RestAPI, showToast, Text, useEffect, useState } from "@webpack/common";
+import { RestAPI, showToast, useEffect, useState } from "@webpack/common";
+import { Text } from "../fosscordCore/compat";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import { Button, SettingsSection } from "../fosscordCore/ui";

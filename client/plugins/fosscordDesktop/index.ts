@@ -62,7 +62,7 @@ export default definePlugin({
             find: ".getMediaEngine().getDesktopSource(",
             replacement: [
                 {
-                    match: /\{if\((\i\.isPlatformEmbedded)\)(\(0,\i\.openModalLazy\))/,
+                    match: /\{if\((\i\.isPlatformEmbedded)\)(\(0,\i\.\i\))(?=\(async\(\)=>)/,
                     replace: "{if($1&&$self.hasNativePicker())$2",
                 },
                 {
@@ -74,16 +74,16 @@ export default definePlugin({
         {
             find: "Direct video streams are unavailable outside the native client",
             replacement: {
-                match: /function (\i)\(\)\{return null!=\i\(\)\}/,
-                replace: "function $1(){return!1}",
+                match: /(\i):function\(\)\{return null!=\i\(\)\}/,
+                replace: "$1:function(){return!1}",
             },
         },
         {
             find: "startDavePreload(){",
             replacement: [
-                { match: /fetchDave:(\(0,\i\.isWeb\)\(\))/, replace: "fetchDave:$1||$self.usesWebEngine()" },
+                { match: /fetchDave:(\(0,\i\.\i\)\(\))/, replace: "fetchDave:$1||$self.usesWebEngine()" },
                 {
-                    match: /(\(0,\i\.isWeb\)\(\))(&&\i\.fetchAsyncResources\(\{fetchDave:!0\}\))/,
+                    match: /(\(0,\i\.\i\)\(\))(&&\i\.fetchAsyncResources\(\{fetchDave:!0\}\))/,
                     replace: "($1||$self.usesWebEngine())$2",
                 },
             ],
@@ -91,8 +91,8 @@ export default definePlugin({
         {
             find: ".DUMMY:default:return",
             replacement: {
-                match: /function (\i)\((\i)\)\{return new\((\i)\(\2\)\)\}/,
-                replace: 'function $1($2){return $self.withClips(new($3($2)),$3("NATIVE"))}',
+                match: /(\i):function\((\i)\)\{return new\((\i)\(\2\)\)\}/,
+                replace: '$1:function($2){return $self.withClips(new($3($2)),$3("NATIVE"))}',
             },
         },
     ],

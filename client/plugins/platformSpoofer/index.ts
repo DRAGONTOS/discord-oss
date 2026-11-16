@@ -199,7 +199,7 @@ export default definePlugin({
             find: "SHOW_ACCOUNT_PROFILE_POPOUT,t),()=>",
             all: true,
             replacement: {
-                match: /status:\i\?\i\.\i\.STREAMING:\i,(?=isSpeaking:\i,voiceDb:)/,
+                match: /status:\i\?\i\.\i\.STREAMING:\i,(?=(?:isSpeaking:\i|voiceStatus:\(0,\i\.\i\)\(\i,\i\)),voiceDb:)/,
                 replace: "$&isMobile:$self.selfMobile(),isVR:$self.selfVROrConsole(),",
             },
         },
