@@ -168,10 +168,32 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 
 ### Automatic updates
 
-`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so cron can run it every 2 minutes and a merge to `main` is live a few minutes later:
+`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so it is cheap to run often.
+
+To deploy each push to `main` as soon as GitHub reports it, run `scripts/ops/update-webhook.py` on the host. It needs only `python3`, checks GitHub's `X-Hub-Signature-256` against its secret, ignores other branches, and starts `auto-update.sh` once per push; a push during a run gets one more run afterwards. As a systemd service, with the checkout in `/srv/meowcord` and a secret from `openssl rand -hex 32`:
+
+```ini
+# /etc/systemd/system/meowcord-update-webhook.service
+[Unit]
+Description=Discord OSS update webhook
+After=docker.service network-online.target
+
+[Service]
+WorkingDirectory=/srv/meowcord
+Environment=UPDATE_WEBHOOK_SECRET=<secret>
+ExecStart=/usr/bin/python3 /srv/meowcord/scripts/ops/update-webhook.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`systemctl enable --now meowcord-update-webhook` starts it on `127.0.0.1:32172` (`UPDATE_WEBHOOK_BIND`, `UPDATE_WEBHOOK_PORT`). Route a public URL to it in your proxy or tunnel, for example a `deploy.<DOMAIN>` host name to `http://127.0.0.1:32172`. Then add a webhook in the repository's settings on GitHub: that URL as the payload URL, content type `application/json`, the same secret, and just the push event. GitHub's ping right after saving should get a green check. `UPDATE_WEBHOOK_REF` picks another branch than `refs/heads/main`, and `journalctl -u meowcord-update-webhook` shows each run.
+
+Keep cron as a fallback for deliveries that never arrive, and use it alone without the webhook:
 
 ```cron
-*/2 * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
+*/15 * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
 ```
 
 When a build or the client download fails, the checkout goes back to the running commit, the old images stay or are rebuilt, and the script exits with code 1. The failed commit is remembered in `/tmp/fosscord-auto-update.lock.failed`, so it is reported once and not rebuilt every run; the next commit on the branch is tried as usual, and deleting the file retries the same one. A checkout with local commits or changes is left alone. The client download replaces the web client without the backup that [Updates](#updates) makes by hand.
