@@ -168,13 +168,63 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 
 ### Automatic updates
 
-`scripts/auto-update.sh` fast-forwards the branch, rebuilds, runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A failed build moves the checkout back, a checkout with local commits is left alone, and the script exits with code 1 when a step failed and nothing changed, or when the server doesn't answer after an update. Set `UPDATE_CLIENT=0`, because its client step downloads whatever build discord.com serves, without a backup.
+`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so a systemd timer can run it every 30 seconds and a merge to `main` starts deploying within half a minute. With the checkout in `/srv/meowcord`, owned by a user in the `docker` group:
 
-```cron
-17 */6 * * * UPDATE_CLIENT=0 /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
+```ini
+# /etc/systemd/system/meowcord-update.service
+[Unit]
+Description=Discord OSS auto-update
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=<checkout owner>
+WorkingDirectory=/srv/meowcord
+ExecStart=/srv/meowcord/scripts/auto-update.sh
+
+# /etc/systemd/system/meowcord-update.timer
+[Unit]
+Description=Check for Discord OSS updates every 30 seconds
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=30s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
 ```
 
-The script also reads `ENV_FILE`, `UPDATE_CODE=0` to skip the code, `SERVER_PORT` from its own environment and not from the env file, `NOTIFY_WEBHOOK` for a Discord-compatible webhook that gets each result, and `LOCK_FILE`.
+`systemctl enable --now meowcord-update.timer` starts it, and `journalctl -u meowcord-update` shows each run. The next run starts 30 seconds after the previous one ends, so runs never overlap. Without systemd, cron does the same at most once a minute:
+
+```cron
+* * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
+```
+
+To start the update the moment GitHub reports a push instead, run `scripts/ops/update-webhook.py` on the host and point a repository webhook at it. Adding a webhook needs admin rights on the repository. The listener needs only `python3`, checks GitHub's `X-Hub-Signature-256` against its secret, ignores other branches and starts `auto-update.sh` once per push; a push during a run gets one more run afterwards. As a systemd service, with a secret from `openssl rand -hex 32`:
+
+```ini
+# /etc/systemd/system/meowcord-update-webhook.service
+[Unit]
+Description=Discord OSS update webhook
+After=docker.service network-online.target
+
+[Service]
+User=<checkout owner>
+WorkingDirectory=/srv/meowcord
+Environment=UPDATE_WEBHOOK_SECRET=<secret>
+ExecStart=/usr/bin/python3 /srv/meowcord/scripts/ops/update-webhook.py
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+It listens on `127.0.0.1:32172` (`UPDATE_WEBHOOK_BIND`, `UPDATE_WEBHOOK_PORT`). Route a public URL to it in your proxy, for example `handle /_update-webhook { reverse_proxy 127.0.0.1:32172 }` in the instance's Caddy site, then add the webhook in the repository's settings on GitHub: that URL, content type `application/json`, the same secret and just the push event. GitHub's ping after saving should get a green check. `UPDATE_WEBHOOK_REF` picks another branch than `refs/heads/main`. Keep the timer as a fallback for deliveries that never arrive, with a longer interval if you like.
+
+When a build or the client download fails, the checkout goes back to the running commit, the old images stay or are rebuilt, and the script exits with code 1. The failed commit is remembered in `/tmp/fosscord-auto-update.lock.failed`, so it is reported once and not rebuilt every run; the next commit on the branch is tried as usual, and deleting the file retries the same one. A checkout with local commits or changes is left alone. The client download replaces the web client without the backup that [Updates](#updates) makes by hand.
+
+The script also reads `ENV_FILE`, `UPDATE_CODE=0` to skip the code, `UPDATE_CLIENT=0` to skip the client download, `SERVER_PORT` from its own environment and not from the env file, `NOTIFY_WEBHOOK` for a Discord-compatible webhook that gets each result, `LOCK_FILE` and `FAILED_FILE`.
 
 ## Optional content
 
