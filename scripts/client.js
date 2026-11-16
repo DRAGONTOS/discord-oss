@@ -43,12 +43,13 @@ const sliceExpression = (source, start) => {
     return source.slice(start);
 };
 
+// chunk ids are compared as strings ("123"===e) in older builds and as numbers (123===e) since build 673869
 const chunkNames = (source) => {
     const names = new Set();
     for (const match of source.matchAll(/\.[uk]=([a-zA-Z_$][\w$]*)=>/g)) {
         const parameter = match[1];
         const body = sliceExpression(source, match.index + match[0].length);
-        const ids = new Set([...body.matchAll(/"(\d+)"===[a-zA-Z_$][\w$]*/g), ...body.matchAll(/[{,](\d+(?:e\d+)?):"[0-9a-f]+"/g)].map((m) => String(Number(m[1]))));
+        const ids = new Set([...body.matchAll(/"?(\d+(?:e\d+)?)"?===[a-zA-Z_$][\w$]*/g), ...body.matchAll(/[{,](\d+(?:e\d+)?):"[0-9a-f]+"/g)].map((m) => String(Number(m[1]))));
         let fn;
         try {
             fn = vm.runInNewContext(`(${parameter}=>${body})`, {}, { timeout: 100 });
@@ -56,14 +57,18 @@ const chunkNames = (source) => {
             continue;
         }
         for (const id of ids) {
-            const name = fn(id);
-            if (typeof name === "string" && /^[\w.-]+$/.test(name) && !name.includes("undefined")) names.add(name);
+            // the id goes in as a string for the older string comparisons and as a number for the newer ones
+            for (const arg of [id, Number(id)]) {
+                const name = fn(arg);
+                if (typeof name === "string" && /^[\w.-]+$/.test(name) && !name.includes("undefined")) names.add(name);
+            }
         }
     }
     return names;
 };
 
-const WASM_MODULE = /\.v\(\w+,\w+\.id,"([0-9a-f]{8,32})"/g;
+// webpack's async WebAssembly loader: `.v(e,t.id,"<hash>"` in older builds, `.v(t,"<hash>.module.wasm"` since build 673869
+const WASM_MODULE = /\.v\(\w+,(?:\w+\.id,)?"([0-9a-f]{8,32})(?:\.module\.wasm)?"/g;
 const references = (text) => {
     const names = [...text.matchAll(ASSET_NAME)]
         .filter((match) => {
