@@ -71,7 +71,7 @@ test("auto-update deploys new commits and leaves an up-to-date checkout alone", 
         let r = t.run();
         assert.strictEqual(r.status, 0, r.out);
         assert.match(r.out, /everything is up to date/);
-        assert.doesNotMatch(r.docker, /compose build|--force/);
+        assert.strictEqual(r.docker, "", "a run with nothing new starts no container");
 
         const next = t.commit("feature");
         r = t.run();

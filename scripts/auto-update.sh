@@ -2,8 +2,8 @@
 #
 # Keeps a Docker Compose deployment up to date: pulls new commits of the checked out branch, rebuilds, downloads the
 # web client again when the pulled code pins a different Discord build (client/release.json) and restarts. Meant for
-# cron every few minutes, so a merge to main reaches the instance shortly after, see "Automatic updates" in
-# docs/self-hosting/setup.md. A run with nothing new only does a git fetch.
+# a systemd timer or cron every 30 seconds to a few minutes, so a merge to main reaches the instance shortly after, see
+# "Automatic updates" in docs/self-hosting/setup.md. A run with nothing new only does a git fetch.
 #
 # Settings, all optional, as environment variables:
 #   ENV_FILE        compose env file, when it isn't .env (for example prod.env)
@@ -80,8 +80,9 @@ if [ "${UPDATE_CODE:-1}" != 0 ]; then
 fi
 
 # 2. web client: the server refuses to start on a client build other than the one client/release.json pins, so when
-# the pin moved, download the pinned build with the new image before anything restarts
-if [ "${UPDATE_CLIENT:-1}" != 0 ]; then
+# the pulled code moved the pin, download the pinned build with the new image before anything restarts. Only checked
+# after a code update (or with UPDATE_CODE=0), so runs with nothing new don't start a container.
+if [ "${UPDATE_CLIENT:-1}" != 0 ] && { [ "$code_updated" = 1 ] || [ "${UPDATE_CODE:-1}" = 0 ]; }; then
     build_of() { grep -o '"BUILD_NUMBER":"[0-9]*"' | head -n1 | grep -o '[0-9][0-9]*' || true; }
     pinned=$(grep -o '"buildNumber": *"[0-9]*"' client/release.json | grep -o '[0-9][0-9]*' || true)
     current=$(compose run --rm --no-deps -T --entrypoint sh client -c 'cat assets/cache/index.html 2>/dev/null || true' | build_of) || current=""

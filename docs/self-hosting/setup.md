@@ -168,9 +168,40 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 
 ### Automatic updates
 
-`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so it is cheap to run often.
+`scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so a systemd timer can run it every 30 seconds and a merge to `main` starts deploying within half a minute. With the checkout in `/srv/meowcord`, owned by a user in the `docker` group:
 
-To deploy each push to `main` as soon as GitHub reports it, run `scripts/ops/update-webhook.py` on the host. It needs only `python3`, checks GitHub's `X-Hub-Signature-256` against its secret, ignores other branches, and starts `auto-update.sh` once per push; a push during a run gets one more run afterwards. As a systemd service, with the checkout in `/srv/meowcord` and a secret from `openssl rand -hex 32`:
+```ini
+# /etc/systemd/system/meowcord-update.service
+[Unit]
+Description=Discord OSS auto-update
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+User=<checkout owner>
+WorkingDirectory=/srv/meowcord
+ExecStart=/srv/meowcord/scripts/auto-update.sh
+
+# /etc/systemd/system/meowcord-update.timer
+[Unit]
+Description=Check for Discord OSS updates every 30 seconds
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=30s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+```
+
+`systemctl enable --now meowcord-update.timer` starts it, and `journalctl -u meowcord-update` shows each run. The next run starts 30 seconds after the previous one ends, so runs never overlap. Without systemd, cron does the same at most once a minute:
+
+```cron
+* * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
+```
+
+To start the update the moment GitHub reports a push instead, run `scripts/ops/update-webhook.py` on the host and point a repository webhook at it. Adding a webhook needs admin rights on the repository. The listener needs only `python3`, checks GitHub's `X-Hub-Signature-256` against its secret, ignores other branches and starts `auto-update.sh` once per push; a push during a run gets one more run afterwards. As a systemd service, with a secret from `openssl rand -hex 32`:
 
 ```ini
 # /etc/systemd/system/meowcord-update-webhook.service
@@ -179,6 +210,7 @@ Description=Discord OSS update webhook
 After=docker.service network-online.target
 
 [Service]
+User=<checkout owner>
 WorkingDirectory=/srv/meowcord
 Environment=UPDATE_WEBHOOK_SECRET=<secret>
 ExecStart=/usr/bin/python3 /srv/meowcord/scripts/ops/update-webhook.py
@@ -188,13 +220,7 @@ Restart=on-failure
 WantedBy=multi-user.target
 ```
 
-`systemctl enable --now meowcord-update-webhook` starts it on `127.0.0.1:32172` (`UPDATE_WEBHOOK_BIND`, `UPDATE_WEBHOOK_PORT`). Route a public URL to it in your proxy or tunnel, for example a `deploy.<DOMAIN>` host name to `http://127.0.0.1:32172`. Then add a webhook in the repository's settings on GitHub: that URL as the payload URL, content type `application/json`, the same secret, and just the push event. GitHub's ping right after saving should get a green check. `UPDATE_WEBHOOK_REF` picks another branch than `refs/heads/main`, and `journalctl -u meowcord-update-webhook` shows each run.
-
-Keep cron as a fallback for deliveries that never arrive, and use it alone without the webhook:
-
-```cron
-*/15 * * * * /srv/meowcord/scripts/auto-update.sh >> /var/log/meowcord-update.log 2>&1
-```
+It listens on `127.0.0.1:32172` (`UPDATE_WEBHOOK_BIND`, `UPDATE_WEBHOOK_PORT`). Route a public URL to it in your proxy, for example `handle /_update-webhook { reverse_proxy 127.0.0.1:32172 }` in the instance's Caddy site, then add the webhook in the repository's settings on GitHub: that URL, content type `application/json`, the same secret and just the push event. GitHub's ping after saving should get a green check. `UPDATE_WEBHOOK_REF` picks another branch than `refs/heads/main`. Keep the timer as a fallback for deliveries that never arrive, with a longer interval if you like.
 
 When a build or the client download fails, the checkout goes back to the running commit, the old images stay or are rebuilt, and the script exits with code 1. The failed commit is remembered in `/tmp/fosscord-auto-update.lock.failed`, so it is reported once and not rebuilt every run; the next commit on the branch is tried as usual, and deleting the file retries the same one. A checkout with local commits or changes is left alone. The client download replaces the web client without the backup that [Updates](#updates) makes by hand.
 
