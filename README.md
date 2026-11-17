@@ -29,7 +29,7 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 You need a Linux host with Docker Engine and the Compose plugin, a domain whose DNS record points at the host, a reverse proxy or tunnel that serves that domain over HTTPS (Caddy, nginx or Cloudflare Tunnel, for example), and open UDP port 50000 for voice.
 
 ```sh
-git clone https://github.com/wypiek/discord-oss.git && cd discord-oss
+git clone https://github.com/dragontos/librecord.git && cd librecord
 cp .env.example .env
 $EDITOR .env
 docker compose up -d --build
@@ -57,7 +57,7 @@ Install Bun 1.4, PostgreSQL, Git and `lsof`. Voice needs Go, and Equicord's own 
 ```sh
 bun install
 bun run generate:client
-scripts/dev/worktree-setup.sh 3001 discord_oss_dev
+scripts/dev/worktree-setup.sh 3001 librecord_dev
 ```
 
 `generate:client` downloads the Discord web client into `assets/cache` and builds Equicord with this project's plugins into `assets/vencord`. `worktree-setup.sh` creates a fresh database, writes `.env` and `config.json`, builds and starts the server on port 3001 and seeds two test accounts, whose passwords it saves in `scripts/dev/.test-account`. Open `http://localhost:3001`.
