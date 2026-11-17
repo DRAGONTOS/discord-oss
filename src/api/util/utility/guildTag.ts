@@ -17,8 +17,8 @@ export interface GuildTagChanges {
 export function applyGuildTag(guild: Guild, changes: GuildTagChanges, { unrestricted = false }: { unrestricted?: boolean } = {}) {
     const profile = { ...(guild.profile ?? {}) };
     if (changes.tag !== undefined) {
-        // instance staff may set any tag (unrestricted); everyone else gets discord's 2-4 letters or numbers
-        if (changes.tag !== null && !unrestricted && !/^[\p{L}\p{N}]{2,4}$/u.test(changes.tag)) throw new HTTPError("Tag must be 2 to 4 letters or numbers", 400);
+        // instance staff may set any tag (unrestricted); everyone else gets 2-10 letters or numbers (discord's limit is 4)
+        if (changes.tag !== null && !unrestricted && !/^[\p{L}\p{N}]{2,10}$/u.test(changes.tag)) throw new HTTPError("Tag must be 2 to 10 letters or numbers", 400);
         profile.tag = changes.tag;
     }
     if (changes.badge !== undefined) profile.badge = changes.badge;
