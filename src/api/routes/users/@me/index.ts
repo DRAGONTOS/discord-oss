@@ -1,4 +1,5 @@
 import { assertIdentityNameAllowed } from "@spacebar/util/util/IdentityModeration";
+import { User_DisplayNameEffect } from "discord-protos";
 import bcrypt from "bcrypt";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
@@ -15,6 +16,7 @@ import {
     FieldErrors,
     generateToken,
     handleFile,
+    isValidDisplayNameFontId,
     Snowflake,
     UserUpdateEvent,
 } from "@spacebar/util";
@@ -246,12 +248,22 @@ router.patch(
             user.flags = (Number(user.flags) & ~mutable) | (body.flags & mutable);
         }
 
+        if (body.display_name_font_id != null && !isValidDisplayNameFontId(body.display_name_font_id))
+            throw FieldErrors({ display_name_font_id: { code: "BASE_TYPE_CHOICES", message: "This display name font does not exist" } });
+
         if (body.display_name_font_id !== undefined || body.display_name_effect_id !== undefined || body.display_name_colors !== undefined) {
             const font_id = body.display_name_font_id !== undefined ? body.display_name_font_id : user.display_name_styles?.font_id;
             const effect_id = body.display_name_effect_id !== undefined ? body.display_name_effect_id : user.display_name_styles?.effect_id;
             const colors = body.display_name_colors !== undefined ? body.display_name_colors : user.display_name_styles?.colors;
             Object.assign(user, {
-                display_name_styles: font_id == null && effect_id == null && !colors?.length ? null : { font_id: font_id ?? 0, effect_id: effect_id ?? 0, colors: colors ?? [] },
+                display_name_styles:
+                    font_id == null && effect_id == null && !colors?.length
+                        ? null
+                        : {
+                              font_id: font_id ?? 0,
+                              effect_id: effect_id || User_DisplayNameEffect.SOLID,
+                              colors: colors ?? [],
+                          },
             });
         }
 
