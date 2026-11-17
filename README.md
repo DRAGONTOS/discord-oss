@@ -1,12 +1,12 @@
-# Discord OSS
+# Librecord
 
-Discord OSS is a self-hosted chat server that speaks Discord's REST API, gateway and voice protocol. It serves the official Discord web client from a local cache with [Equicord](https://github.com/Equicord/Equicord) built in, rebranded with your instance's name and icon, so people get the app they already know on a server you run.
+Librecord is a self-hosted chat server that speaks Discord's REST API, gateway and voice protocol. It serves the official Discord web client from a local cache with [Equicord](https://github.com/Equicord/Equicord) built in, rebranded with your instance's name and icon, so people get the app they already know on a server you run.
 
 It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in TypeScript on Express 5 and TypeORM, and it runs on [Bun](https://bun.sh) with PostgreSQL or SQLite.
 
-> Discord OSS is not made by, affiliated with or endorsed by Discord Inc. Accounts are separate from Discord accounts, and nothing posted on an instance is sent to Discord.
+> Librecord is not made by, affiliated with or endorsed by Discord Inc. Accounts are separate from Discord accounts, and nothing posted on an instance is sent to Discord.
 
-![The Discord OSS landing page](docs/images/landing.png)
+![The Librecord landing page](docs/images/landing.png)
 
 ## Features
 
@@ -20,9 +20,9 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 - **Admin dashboard:** users, servers, reports, AutoMod and raid protection, staff roles with an audit log, badges, the Shop, the status page, announcements and every setting, at `/admin`.
 - **Developer portal:** OAuth2 applications, bots, slash commands and embedded activities, at `/developers`.
 - **Mobile:** the web client works in phone browsers and installs to the home screen, and a bundle for Discord's Android app through Kettu points it at your instance. See [phones.md](docs/features/phones.md).
-- **Desktop and Android apps:** Discord OSS for macOS, Windows, Linux and Android. The desktop app is an Electron shell and the Android app a Capacitor app, both running the instance's web client with voice, video and screen sharing, and an instance switcher for saved instances. See [desktop.md](docs/features/desktop.md).
+- **Desktop and Android apps:** Librecord for macOS, Windows, Linux and Android. The desktop app is an Electron shell and the Android app a Capacitor app, both running the instance's web client with voice, video and screen sharing, and an instance switcher for saved instances. See [desktop.md](docs/features/desktop.md).
 
-[parity.md](docs/development/parity.md) lists every Discord feature and its state on Discord OSS.
+[parity.md](docs/development/parity.md) lists every Discord feature and its state on Librecord.
 
 ## Run an instance
 
@@ -46,9 +46,9 @@ docker compose exec server bun scripts/ops/operator.mjs grant <account-id>
 
 Then open `https://<your domain>/admin`.
 
-[setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Discord OSS without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
+[setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Librecord without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
 
-![The Discord OSS status page](docs/images/status.png)
+![The Librecord status page](docs/images/status.png)
 
 ## Develop
 
@@ -93,10 +93,10 @@ Read [CONTRIBUTING.MD](CONTRIBUTING.MD) before opening a pull request, [client-p
 
 ## Credits
 
-Discord OSS builds on [Spacebar](https://github.com/spacebarchat/server) and [Meowcord](https://github.com/meowcorded/meowcord), and on [Equicord](https://github.com/Equicord/Equicord) and [Vencord](https://github.com/Vendicated/Vencord) for the client layer. The pride flags come from [b3yc0d3/twemoji-flags](https://github.com/b3yc0d3/twemoji-flags) under CC BY 4.0, with the rest drawn for this project, as [ATTRIBUTION.md](assets/badge-icons/twemoji-flags/ATTRIBUTION.md) records.
+Librecord builds on [Spacebar](https://github.com/spacebarchat/server) and [Meowcord](https://github.com/meowcorded/meowcord), and on [Equicord](https://github.com/Equicord/Equicord) and [Vencord](https://github.com/Vendicated/Vencord) for the client layer. The pride flags come from [b3yc0d3/twemoji-flags](https://github.com/b3yc0d3/twemoji-flags) under CC BY 4.0, with the rest drawn for this project, as [ATTRIBUTION.md](assets/badge-icons/twemoji-flags/ATTRIBUTION.md) records.
 
 Discord's web client and artwork belong to Discord Inc. They are downloaded by each instance at setup and are never part of this repository.
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE). If you run a modified Discord OSS for other people, you must offer them its source code.
+[GNU Affero General Public License v3.0](LICENSE). If you run a modified Librecord for other people, you must offer them its source code.
