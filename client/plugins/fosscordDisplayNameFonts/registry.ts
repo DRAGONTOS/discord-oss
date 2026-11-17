@@ -31,7 +31,8 @@ export function validateFonts(fonts: InstanceFont[]) {
         if (seen.has(font.id)) throw new Error(`Display name font id ${font.id} is listed twice`);
         seen.add(font.id);
         if (!/^[A-Z][A-Z0-9_]*$/.test(font.key)) throw new Error(`Display name font ${font.id} has an invalid key`);
-        for (const value of [font.name, font.family, font.file, font.format]) if (!SAFE.test(value ?? "")) throw new Error(`Display name font ${font.id} has an invalid name, family, file or format`);
+        for (const value of [font.name, font.family, font.file, font.format])
+            if (!SAFE.test(value ?? "")) throw new Error(`Display name font ${font.id} has an invalid name, family, file or format`);
         if (/[{}<>]/.test(font.style ?? "")) throw new Error(`Display name font ${font.id} has an invalid style`);
     }
     return fonts;
@@ -54,6 +55,6 @@ export function fontCss(fonts: InstanceFont[]) {
 }
 
 // Replacement strings for the three patches that put the fonts into the client's enum, picker list and class map. $1 and $& are String.replace references.
-export const enumReplacement = (fonts: InstanceFont[]) => "$&" + fonts.map((f) => `$1[$1.${f.key}=${f.id}]="${f.key}",`).join("");
+export const enumReplacement = (fonts: InstanceFont[]) => `$&${fonts.map((f) => `$1[$1.${f.key}=${f.id}]="${f.key}",`).join("")}`;
 export const listReplacement = (fonts: InstanceFont[]) => `$1,${fonts.map((f) => f.id).join(",")}]`;
 export const classMapReplacement = (fonts: InstanceFont[]) => `$1,${fonts.map((f) => `${f.id}:"${fontClass(f)}"`).join(",")}}`;
