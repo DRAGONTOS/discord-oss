@@ -24,7 +24,7 @@ Compose builds the `meowcord-server` and `meowcord-sfu` images from this checkou
 ## Install
 
 ```sh
-git clone https://github.com/meowcorded/meowcord.git meowcord && cd meowcord
+git clone https://github.com/libre-cord/librecord.git librecord && cd librecord
 cp .env.example .env
 $EDITOR .env
 docker compose up -d --build
