@@ -2,7 +2,3 @@
     /* biome-ignore lint/complexity/noImportantStyles: has to beat the inline style Discord sets on the element */
     --custom-dns-tile-columns: 4 !important;
 }
-
-[style*="--custom-dns-tile-columns"] {
-    --custom-dns-tile-columns: 4 !important;
-}
