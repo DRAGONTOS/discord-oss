@@ -26,25 +26,7 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 
 ## Run an instance
 
-You need a Linux host with Docker Engine and the Compose plugin, a domain whose DNS record points at the host, a reverse proxy or tunnel that serves that domain over HTTPS (Caddy, nginx or Cloudflare Tunnel, for example), and open UDP port 50000 for voice.
-
-```sh
-git clone https://github.com/dragontos/librecord.git && cd librecord
-cp .env.example .env
-$EDITOR .env
-docker compose up -d --build
-docker compose logs -f client
-```
-
-In `.env`, set at least `DOMAIN`, `POSTGRES_PASSWORD` and `WRTC_PUBLIC_IP`. On the first start the `client` service downloads the Discord web client, about 300 MB, which takes a few minutes. The server then listens on `127.0.0.1:32171`, set by `SERVER_BIND` and `SERVER_PORT`. Point your proxy or tunnel at it with websocket upgrades and open `https://<your domain>/register`.
-
-The first account has no special rights. To make yourself the operator, turn on Developer Mode in the client, copy your account ID and run:
-
-```sh
-docker compose exec server bun scripts/ops/operator.mjs grant <account-id>
-```
-
-Then open `https://<your domain>/admin`.
+[Install](https://github.com/libre-cord/librecord/blob/production/docs/self-hosting/setup.md#install)
 
 [setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Librecord without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
 
