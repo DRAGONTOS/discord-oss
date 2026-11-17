@@ -41,6 +41,7 @@ export * from "./NameValidation";
 export * from "./Version";
 export * from "./Presence";
 export * from "./GuildTags";
+export * from "./DisplayNameFonts";
 export * from "./MediaProxy";
 export * from "./DiscoverySearch";
 export * from "./VideoFrame";

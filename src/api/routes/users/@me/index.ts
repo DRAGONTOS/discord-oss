@@ -15,6 +15,7 @@ import {
     FieldErrors,
     generateToken,
     handleFile,
+    isValidDisplayNameFontId,
     Snowflake,
     UserUpdateEvent,
 } from "@spacebar/util";
@@ -245,6 +246,9 @@ router.patch(
             const mutable = Number(UserFlags.FLAGS.PREMIUM_PROMO_DISMISSED | UserFlags.FLAGS.HAS_UNREAD_URGENT_MESSAGES);
             user.flags = (Number(user.flags) & ~mutable) | (body.flags & mutable);
         }
+
+        if (body.display_name_font_id != null && !isValidDisplayNameFontId(body.display_name_font_id))
+            throw FieldErrors({ display_name_font_id: { code: "BASE_TYPE_CHOICES", message: "This display name font does not exist" } });
 
         if (body.display_name_font_id !== undefined || body.display_name_effect_id !== undefined || body.display_name_colors !== undefined) {
             const font_id = body.display_name_font_id !== undefined ? body.display_name_font_id : user.display_name_styles?.font_id;

@@ -1,0 +1,13 @@
+[
+    {
+        "id": 100,
+        "key": "INCONSOLATA_ULTRA_EXPANDED",
+        "name": "Inconsolata",
+        "family": "Inconsolata Ultra Expanded",
+        "file": "Inconsolata.ttf",
+        "format": "truetype",
+        "weight": "200 900",
+        "stretch": "50% 200%",
+        "style": "font-weight:700;font-stretch:200%;font-variation-settings:\"wdth\" 200,\"wght\" 700;"
+    }
+]
