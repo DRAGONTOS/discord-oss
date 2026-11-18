@@ -666,6 +666,7 @@ const TABS = {
   settings: renderSettings,
   users: renderUsers,
   badges: renderBadges,
+  fonts: renderFonts,
   experiments: renderExperiments,
   games: renderGames,
   store: renderStore,
@@ -5230,6 +5231,191 @@ function openBadge(badge, refresh) {
       e.currentTarget,
       () => api(`/admin/badges/${badge.id}`, { method: "DELETE" }),
       "Badge deleted",
+    );
+    if (done !== undefined) {
+      closeDrawer();
+      refresh();
+    }
+  });
+}
+
+async function renderFonts(view) {
+  const fonts = await api("/admin/fonts");
+  mount(
+    view,
+    html`
+            <div class="page-head">
+                <div>
+                    <h1>Display name fonts</h1>
+                    <p class="muted">
+                        Fonts the client's font picker offers for display names, beyond Discord's own. A new font reaches the picker when the
+                        instance is rebuilt and restarted, and for a Docker deployment the file and fonts.json have to be committed first.
+                    </p>
+                </div>
+                <button class="btn primary" id="new-font" type="button">Upload font</button>
+            </div>
+            ${
+              fonts.length
+                ? html`<div class="table-wrap">
+                          <table>
+                              <thead>
+                                  <tr>
+                                      <th>Font</th>
+                                      <th class="hide-sm">File</th>
+                                      <th>Used by</th>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  ${fonts.map(
+                                    (f) =>
+                                      html`<tr data-id="${f.id}">
+                                              <td>
+                                                  <div class="ident"><strong>${f.name}</strong> <span class="muted">#${f.id}</span></div>
+                                              </td>
+                                              <td class="hide-sm"><span class="muted">${f.file}</span></td>
+                                              <td>
+                                                  ${
+                                                    f.holders
+                                                      ? `${fmtNumber(f.holders)} ${f.holders === 1 ? "profile" : "profiles"}`
+                                                      : html`<span class="muted">No one yet</span>`
+                                                  }
+                                              </td>
+                                          </tr>`,
+                                  )}
+                              </tbody>
+                          </table>
+                      </div>`
+                : emptyCard("No instance fonts yet. Upload a TTF, OTF, WOFF or WOFF2 file to add one to the picker.", "Upload font")
+            }
+        `,
+  );
+  const refresh = () => renderFonts(view);
+  $("#new-font").addEventListener("click", () => openFontForm(null, refresh));
+  $("[data-empty-action]", view)?.addEventListener("click", () => openFontForm(null, refresh));
+  for (const row of $$("tbody tr", view))
+    onRowOpen(row, () => openFontForm(fonts.find((f) => String(f.id) === row.dataset.id), refresh));
+}
+
+function openFontForm(font, refresh) {
+  let fontData = null;
+  let fontFileName = null;
+  const body = openDrawer(
+    font ? "Edit font" : "Upload font",
+    html`
+            <form id="font-form" class="stack">
+                <div class="card row" style="gap: 12px">
+                    <span
+                        id="font-preview"
+                        style="font-size: 28px; line-height: 1; font-family: ${font?.file ? `'${font.family}'` : ""}"
+                        >Gg</span
+                    >
+                    <div class="grow">
+                        <strong id="font-preview-name">${font?.name ?? "Font name"}</strong>
+                        <div class="muted">
+                            ${font
+                              ? `Font ${font.id} · ${font.key} · ${font.file}`
+                              : "The tile in the font picker shows the name in the font itself."}
+                        </div>
+                    </div>
+                </div>
+                <label
+                    >Label<input name="name" required maxlength="80" value="${font?.name ?? ""}" placeholder="Comic Neue"
+                /></label>
+                ${
+                  font
+                    ? ""
+                    : html`<label
+                          >Font file<span class="hint">TTF, OTF, WOFF or WOFF2, up to 6 MB. Keep its license file in assets/public/fonts too.</span
+                          ><input name="file" type="file" accept=".ttf,.otf,.woff,.woff2"
+                      /></label>`
+                }
+                <label
+                    >Weight<span class="hint">Optional @font-face descriptor. A range like 200 900 for a variable font.</span
+                    ><input name="weight" maxlength="64" value="${font?.weight ?? ""}" placeholder="200 900"
+                /></label>
+                <label
+                    >Stretch<span class="hint">Optional @font-face descriptor. A range like 50% 200% for a variable font.</span
+                    ><input name="stretch" maxlength="64" value="${font?.stretch ?? ""}" placeholder="50% 200%"
+                /></label>
+                <label
+                    >Style<span class="hint">Optional CSS declarations applied to the name, for example a pinned variation.</span
+                    ><input name="style" maxlength="300" value="${font?.style ?? ""}" placeholder='font-weight:700;'
+                /></label>
+                <div class="form-actions">
+                    ${
+                      font
+                        ? html`<button class="btn danger" id="font-delete" type="button" style="margin-right: auto">Remove font</button>`
+                        : ""
+                    }
+                    <button class="btn primary" type="submit">${font ? "Save font" : "Upload font"}</button>
+                </div>
+            </form>
+        `,
+  );
+  if (!body) return;
+  const form = $("#font-form", body);
+  const preview = $("#font-preview", body);
+  const previewName = $("#font-preview-name", body);
+  if (font && font.file) {
+    const face = new FontFace(font.family, `url(/assets/fonts/${font.file})`);
+    face.load().then(() => document.fonts.add(face)).catch(() => {});
+  }
+  form.name.addEventListener("input", () => {
+    previewName.textContent = form.name.value || "Font name";
+  });
+  form.file?.addEventListener("change", async () => {
+    const file = form.file.files[0];
+    if (!file) return;
+    if (file.size > 6 * 1024 * 1024) {
+      form.file.value = "";
+      return toast("Fonts have to be under 6 MB.", "error");
+    }
+    fontFileName = file.name;
+    try {
+      const face = new FontFace("font-upload-preview", await file.arrayBuffer());
+      await face.load();
+      document.fonts.add(face);
+      preview.style.fontFamily = "font-upload-preview";
+    } catch {
+      toast("This file could not be read as a font.", "error");
+    }
+    fontData = await readAsDataUrl(file);
+  });
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!font && !fontData) return toast("Pick a font file first.", "error");
+    const done = await act(
+      $("button[type=submit]", form),
+      () => {
+        if (font) {
+          const payload = { name: form.name.value, weight: form.weight.value || null, stretch: form.stretch.value || null, style: form.style.value || null };
+          return api(`/admin/fonts/${font.id}`, { method: "PATCH", body: payload });
+        }
+        const payload = { name: form.name.value, file_name: fontFileName, font_data: fontData };
+        for (const key of ["weight", "stretch", "style"]) if (form[key].value) payload[key] = form[key].value;
+        return api("/admin/fonts", { method: "POST", body: payload });
+      },
+      font ? "Font saved" : "Font uploaded",
+    );
+    if (done !== undefined) {
+      closeDrawer();
+      refresh();
+      if (!font) toast("Rebuild and restart the instance for the font picker to list it.", "success");
+    }
+  });
+  $("#font-delete", body)?.addEventListener("click", async (e) => {
+    if (
+      !await confirmDialog({
+        title: `Remove the "${font.name}" font?`,
+        message: "No profile uses it. The entry and the font file are removed, and a rebuild takes it out of the picker.",
+        confirm: "Remove font",
+      })
+    )
+      return;
+    const done = await act(
+      e.currentTarget,
+      () => api(`/admin/fonts/${font.id}`, { method: "DELETE" }),
+      "Font removed",
     );
     if (done !== undefined) {
       closeDrawer();

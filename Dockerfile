@@ -56,7 +56,7 @@ COPY --from=build /app/dist dist
 COPY --chown=bun:bun assets assets
 COPY --from=build --chown=bun:bun /app/assets/vencord assets/vencord
 COPY client/release.json client/release.json
-COPY client/plugins/fosscordDisplayNameFonts/fonts.json client/plugins/fosscordDisplayNameFonts/fonts.json
+COPY --chown=bun:bun client/plugins/fosscordDisplayNameFonts/fonts.json client/plugins/fosscordDisplayNameFonts/fonts.json
 COPY scripts/client-release.js scripts/client.js scripts/e2ee-anchors.js scripts/clan-badges.js scripts/compress-client.js scripts/docker-configure.js scripts/
 COPY scripts/ops/operator.mjs scripts/ops/operator.mjs
 COPY scripts/provision-stickers.mjs scripts/provision-stickers.mjs

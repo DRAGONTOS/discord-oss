@@ -487,6 +487,60 @@ export interface AdminBadgeUpdateSchema {
     details?: string | null;
 }
 
+export interface AdminFontCreateSchema {
+    /**
+     * Label shown in the client's font picker
+     * @minLength 1
+     * @maxLength 80
+     */
+    name: string;
+    /**
+     * The uploaded file's name, used for the file written to assets/public/fonts
+     * @maxLength 200
+     */
+    file_name?: string;
+    /**
+     * A data: URI font file, TTF, OTF, WOFF or WOFF2
+     */
+    font_data: string;
+    /**
+     * Optional @font-face font-weight descriptor, for example "200 900" for a variable font
+     * @maxLength 64
+     */
+    weight?: string;
+    /**
+     * Optional @font-face font-stretch descriptor, for example "50% 200%"
+     * @maxLength 64
+     */
+    stretch?: string;
+    /**
+     * CSS declarations applied to the name, for example a pinned font variation
+     * @maxLength 300
+     */
+    style?: string;
+}
+
+export interface AdminFontUpdateSchema {
+    /**
+     * Label shown in the client's font picker
+     * @minLength 1
+     * @maxLength 80
+     */
+    name?: string;
+    /**
+     * @maxLength 64
+     */
+    weight?: string | null;
+    /**
+     * @maxLength 64
+     */
+    stretch?: string | null;
+    /**
+     * @maxLength 300
+     */
+    style?: string | null;
+}
+
 export interface AdminGuildUpdateSchema {
     /** @pattern ^data:image/ */
     icon?: string | null;

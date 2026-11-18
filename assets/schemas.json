@@ -12066,6 +12066,81 @@
         "additionalProperties": false,
         "$schema": "http://json-schema.org/draft-07/schema#"
     },
+    "AdminFontCreateSchema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "description": "Label shown in the client's font picker",
+                "minLength": 1,
+                "maxLength": 80,
+                "type": "string"
+            },
+            "file_name": {
+                "description": "The uploaded file's name, used for the file written to assets/public/fonts",
+                "maxLength": 200,
+                "type": "string"
+            },
+            "font_data": {
+                "description": "A data: URI font file, TTF, OTF, WOFF or WOFF2",
+                "type": "string"
+            },
+            "weight": {
+                "description": "Optional",
+                "maxLength": 64,
+                "type": "string"
+            },
+            "stretch": {
+                "description": "Optional",
+                "maxLength": 64,
+                "type": "string"
+            },
+            "style": {
+                "description": "CSS declarations applied to the name, for example a pinned font variation",
+                "maxLength": 300,
+                "type": "string"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "font_data",
+            "name"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "AdminFontUpdateSchema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "description": "Label shown in the client's font picker",
+                "minLength": 1,
+                "maxLength": 80,
+                "type": "string"
+            },
+            "weight": {
+                "maxLength": 64,
+                "type": [
+                    "null",
+                    "string"
+                ]
+            },
+            "stretch": {
+                "maxLength": 64,
+                "type": [
+                    "null",
+                    "string"
+                ]
+            },
+            "style": {
+                "maxLength": 300,
+                "type": [
+                    "null",
+                    "string"
+                ]
+            }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
     "AdminGuildUpdateSchema": {
         "type": "object",
         "properties": {
