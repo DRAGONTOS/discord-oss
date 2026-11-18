@@ -38,6 +38,8 @@ The server runs from `dist`, compiled by `tsc` (TypeScript 7 native). `bun run b
 
 ## Workflow
 
+Cross-session handoff notes for this project live in `~/.local/share/agents/`. Read `librecord-handoff.md` there first when resuming after a context reset, and update it when state changes (pin moves, queue changes, new gotchas).
+
 Bun 1.4 runs everything: installs, the server, scripts and tests. Don't use npm, npx or node.
 
 ```sh
