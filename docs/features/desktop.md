@@ -74,4 +74,4 @@ The installer is one program per platform, built by the `switcher` job in `.gith
 | `uninstall` | Removes the line and the module again. |
 | `status` | Lists the apps it found and whether the switcher is installed. |
 
-It finds the apps in `~/Library/Application Support/<profile>` on macOS, `%LOCALAPPDATA%\<app>` on Windows and `~/.config/<profile>` on Linux. Restart the app after installing. A Discord update replaces the desktop core, so run `install` again after one. `scripts/tests/official-desktop-switcher.test.cjs` covers the settings it writes, the discovery check and installing into a fake app folder.
+It finds the apps in `~/Library/Application Support/<profile>` on macOS, `%LOCALAPPDATA%\<app>` on Windows and `~/.config/<profile>` on Linux. Restart the app after installing. A Discord update replaces the desktop core, so run `install` again after one.
