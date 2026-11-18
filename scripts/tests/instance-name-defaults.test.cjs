@@ -25,15 +25,17 @@ const { GeneralConfiguration } = sourceModule("src/util/config/types/GeneralConf
     if (name === "./ClientConfiguration") return client;
     return require(name);
 });
-const { migrate } = sourceModule(
+const { migrate, dropUnknownSectionKeys } = sourceModule(
     "src/util/util/Config.ts",
     (name) => {
         if (name === "../config/types/ClientConfiguration") return client;
         if (name === "../config/types/AutomodConfiguration") return require("../../src/util/config/types/AutomodConfiguration.ts");
+        if (name === "../config/types/ExternalRequestConfiguration") return require("../../src/util/config/types/ExternalRequestConfiguration.ts");
+        if (name === "../config/types/subconfigurations/limits") return require("../../src/util/config/types/subconfigurations/limits/index.ts");
         if (name === "../imports" || name === "../config" || name === "../../database/entities") return {};
         return require(name);
     },
-    "\nmodule.exports.migrate = replaceStaleDefaults;",
+    "\nmodule.exports.migrate = replaceStaleDefaults;\nmodule.exports.dropUnknownSectionKeys = dropUnknownSectionKeys;",
 );
 
 function currentRevision() {
@@ -41,6 +43,17 @@ function currentRevision() {
     migrate(config);
     return config.defaultsRevision;
 }
+
+test("unknown keys in the fixed-shape settings sections are dropped", () => {
+    const config = {
+        externalRequests: { thirdParty: true, legacyFederationToggle: true },
+        limits: { e2ee: { maxEnvelopeBytes: 123, legacyE2ee: "x" }, user: { maxGuilds: 10, legacyUserLimit: 5 } },
+    };
+    dropUnknownSectionKeys(config);
+    assert.deepEqual(config.externalRequests, { thirdParty: true });
+    assert.deepEqual(config.limits.e2ee, { maxEnvelopeBytes: 123 });
+    assert.deepEqual(config.limits.user, { maxGuilds: 10 });
+});
 
 test("fresh client and general defaults use the Librecord name", () => {
     assert.equal(client.DEFAULT_INSTANCE_NAME, "Librecord");

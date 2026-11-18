@@ -7,6 +7,8 @@ import { JsonValue } from "@protobuf-ts/runtime";
 import { bold, red, redBright } from "picocolors";
 import { DEFAULT_INSTANCE_NAME } from "../config/types/ClientConfiguration";
 import { AUTOMOD_POLICY_KEYS } from "../config/types/AutomodConfiguration";
+import { ExternalRequestConfiguration } from "../config/types/ExternalRequestConfiguration";
+import { ChannelLimits, E2eeLimits, GuildLimits, MessageLimits, UserLimits } from "../config/types/subconfigurations/limits";
 
 // TODO: yaml instead of json
 const overridePath = process.env.CONFIG_PATH ?? "";
@@ -56,6 +58,7 @@ async function loadConfig() {
     replaceStaleDefaults(config);
     delete (config.security?.captcha as { service?: unknown } | undefined)?.service;
     dropRemovedKeys(config);
+    dropUnknownSectionKeys(config);
 
     // TODO: factor this out someday
     if (process.env.CDN_SIGNATURE_PATH) config.security.cdnSignatureKey = await Config.readSecret("CDN_SIGNATURE_PATH");
@@ -169,6 +172,24 @@ function dropRemovedKeys(config: ConfigValue) {
         const last = keys.pop()!;
         const parent = keys.length ? readPath(config, keys.join(".")) : config;
         if (parent && typeof parent === "object") delete (parent as Record<string, unknown>)[last];
+    }
+}
+
+const FIXED_SHAPE_SECTIONS: [string, object][] = [
+    ["externalRequests", new ExternalRequestConfiguration()],
+    ["limits.e2ee", new E2eeLimits()],
+    ["limits.user", new UserLimits()],
+    ["limits.guild", new GuildLimits()],
+    ["limits.message", new MessageLimits()],
+    ["limits.channel", new ChannelLimits()],
+];
+
+function dropUnknownSectionKeys(config: ConfigValue) {
+    for (const [path, template] of FIXED_SHAPE_SECTIONS) {
+        const section = readPath(config, path);
+        if (!section || typeof section !== "object") continue;
+        const known = new Set(Object.keys(template));
+        for (const key of Object.keys(section)) if (!known.has(key)) delete (section as Record<string, unknown>)[key];
     }
 }
 
