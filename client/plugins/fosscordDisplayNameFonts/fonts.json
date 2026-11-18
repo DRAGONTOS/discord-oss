@@ -11,14 +11,6 @@
         "style": "font-weight:700;font-stretch:200%;font-variation-settings:\"wdth\" 200,\"wght\" 700;"
     },
     {
-        "id": 101,
-        "key": "COMIC_NEUE",
-        "name": "Comic Neue",
-        "family": "Comic Neue",
-        "file": "ComicNeue.woff2",
-        "format": "woff2"
-    },
-    {
         "id": 102,
         "key": "JETBRAINS_MONO",
         "name": "JetBrains Mono",

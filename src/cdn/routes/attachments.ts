@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { finished, pipeline } from "node:stream/promises";
-import { admitDownload, admitPreview, inspectDownload } from "../util/downloadAdmission";
+import { admitDownload, admitPreview, inspectDownload, PREVIEW_INPUT_LIMIT } from "../util/downloadAdmission";
 import { Request, Response, Router, raw, NextFunction } from "express";
 import multerConfig from "multer";
 import { fileTypeFromBuffer } from "file-type";
@@ -21,6 +21,7 @@ import {
 import { storage, multer, setCacheControl, safeMediaType } from "../util";
 import { InternalCdnAttachment } from "@spacebar/util/dtos/MessageOptions";
 import { cleanAttachmentFilename } from "@spacebar/util/util/AttachmentFilename";
+import { ANIMATABLE_FORMATS, cachedImageVariant, imageVariant, isAnimatedImage, RENDERABLE_MIME_TYPES } from "../util/imageVariants";
 
 import { declaredCloudUploadLimit, requireCloudUploadReservation, requireInternalUploadSignature } from "../util/cloudUploads";
 import { bufferedUpload, internalUploadBufferLimit, internalUploadBufferOverhead } from "../util/uploadAdmission";
@@ -164,6 +165,32 @@ router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req:
                 releaseFrame?.();
                 releasePreview();
             }
+        }
+        const queryFormat = typeof req.query.format === "string" ? req.query.format : undefined;
+        const querySize = typeof req.query.size === "string" ? req.query.size : undefined;
+        if (
+            req.method === "GET" &&
+            type?.mime &&
+            (queryFormat !== undefined || querySize !== undefined) &&
+            RENDERABLE_MIME_TYPES.has(type.mime) &&
+            file.size <= PREVIEW_INPUT_LIMIT
+        ) {
+            const chunks: Buffer[] = [];
+            for await (const chunk of inspected.stream) chunks.push(Buffer.from(chunk));
+            const buffer = Buffer.concat(chunks, file.size);
+            const animated = isAnimatedImage(buffer, type.mime);
+            const variant = imageVariant(queryFormat ? `file.${queryFormat}` : filename, req.query);
+            variant.animated = animated;
+            if (!animated || !variant.format || ANIMATABLE_FORMATS.has(variant.format)) {
+                const image = await cachedImageVariant(path, buffer, variant);
+                res.set("Content-Type", safeMediaType(image.mime));
+                res.send(image.body);
+            } else {
+                res.set("Content-Type", safeMediaType(type.mime));
+                res.send(buffer);
+            }
+            await finished(res);
+            return;
         }
         if (type) res.set("Content-Type", safeMediaType(type.mime));
         else {
@@ -309,12 +336,7 @@ router.delete("/:channel_id/:batch_id/:attachment_id/:filename", async (req: Req
     const path = `attachments/${channel_id}/${batch_id}/${attachment_id}/${filename}`;
 
     const att = await CloudAttachment.findOne({
-        where: {
-            uploadFilename: `${channel_id}/${batch_id}/${attachment_id}/${filename}`,
-            channelId: channel_id,
-            userAttachmentId: attachment_id,
-            userFilename: filename,
-        },
+        where: { uploadFilename: `${channel_id}/${batch_id}/${attachment_id}/${filename}` },
     });
 
     if (att) {
@@ -323,7 +345,7 @@ router.delete("/:channel_id/:batch_id/:attachment_id/:filename", async (req: Req
         await storage.delete(path);
         return res.send({ success: true });
     }
-    return res.status(404).send("Attachment not found");
+    return res.status(404).json({ message: "Attachment not found" });
 });
 
 router.post("/:channel_id/:batch_id/:attachment_id/:filename/clone_to_message/:message_id", async (req: Request, res: Response) => {

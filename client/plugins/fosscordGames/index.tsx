@@ -154,10 +154,6 @@ export default definePlugin({
             find: 'displayName="RunningGameStore"',
             replacement: [
                 {
-                    match: /if\((\i)\)(\{let \i=function\(\)\{let \i=\[\],\i=new Set;)/,
-                    replace: "if($1||$self.bridged())$2",
-                },
-                {
                     match: /(if\(!__OVERLAY__&&)(\i\.isPlatformEmbedded)(\)\{let \i=\[\.\.\.\i,)/,
                     replace: "$1($2||$self.bridged())$3",
                 },
