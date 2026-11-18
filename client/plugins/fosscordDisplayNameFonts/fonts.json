@@ -9,5 +9,13 @@
         "weight": "200 900",
         "stretch": "50% 200%",
         "style": "font-weight:700;font-stretch:200%;font-variation-settings:\"wdth\" 200,\"wght\" 700;"
+    },
+    {
+        "id": 101,
+        "key": "COMIC_NEUE",
+        "name": "Comic Neue",
+        "family": "Comic Neue",
+        "file": "ComicNeue.woff2",
+        "format": "woff2"
     }
 ]

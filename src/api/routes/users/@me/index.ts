@@ -1,4 +1,5 @@
 import { assertIdentityNameAllowed } from "@spacebar/util/util/IdentityModeration";
+import { User_DisplayNameEffect } from "discord-protos";
 import bcrypt from "bcrypt";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
@@ -255,7 +256,14 @@ router.patch(
             const effect_id = body.display_name_effect_id !== undefined ? body.display_name_effect_id : user.display_name_styles?.effect_id;
             const colors = body.display_name_colors !== undefined ? body.display_name_colors : user.display_name_styles?.colors;
             Object.assign(user, {
-                display_name_styles: font_id == null && effect_id == null && !colors?.length ? null : { font_id: font_id ?? 0, effect_id: effect_id ?? 0, colors: colors ?? [] },
+                display_name_styles:
+                    font_id == null && effect_id == null && !colors?.length
+                        ? null
+                        : {
+                              font_id: font_id ?? 0,
+                              effect_id: effect_id || User_DisplayNameEffect.SOLID,
+                              colors: colors ?? [],
+                          },
             });
         }
 

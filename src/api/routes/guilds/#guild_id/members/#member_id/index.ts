@@ -1,4 +1,5 @@
 import { assertIdentityNameAllowed } from "@spacebar/util/util/IdentityModeration";
+import { User_DisplayNameEffect } from "discord-protos";
 import { Request, Response, Router } from "express";
 import { authorizeMemberRoleChanges } from "@spacebar/api/util/utility/memberRoleAuthorization";
 import { route } from "@spacebar/api/middlewares";
@@ -307,7 +308,7 @@ router.patch(
                         ? null
                         : {
                               font_id: display_name_font_id ?? 0,
-                              effect_id: display_name_effect_id ?? 0,
+                              effect_id: display_name_effect_id || User_DisplayNameEffect.SOLID,
                               colors: display_name_colors ?? [],
                           },
             });
