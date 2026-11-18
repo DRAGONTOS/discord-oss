@@ -37,6 +37,12 @@ the two always agree on which fonts exist.
 
 The server rejects `display_name_font_id` values that are neither a Discord font nor listed in `fonts.json`.
 
+## From the admin dashboard
+
+Operators can do the same without editing files: Customization > Display name fonts in the admin dashboard takes a font file and a label, derives the id, the enum key, the file name and the CSS format from them, validates the entry with the same rules as the plugin, writes the file to `assets/public/fonts` and appends the entry to `fonts.json`. The page also edits the label and the weight, stretch and style declarations, and removes a font again, which it refuses while any profile still uses it.
+
+The dashboard writes the live files of the instance it runs on, so the API accepts the new font id right away. The font picker lists it only after a rebuild, and for a Docker deployment the file and `fonts.json` have to be committed first: a container's copy of both is replaced when the image is rebuilt, so on Docker the page is a staging and validation step rather than the lasting record. Keep the font's license file next to it in `assets/public/fonts` either way.
+
 ## Limits
 
 - Only instance staff can add fonts. Users cannot upload their own.
