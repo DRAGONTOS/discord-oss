@@ -645,9 +645,6 @@
                                     "type": "string",
                                     "format": "date-time"
                                 },
-                                "last_seen_ip": {
-                                    "type": "string"
-                                },
                                 "last_seen_location": {
                                     "type": "string"
                                 }
@@ -888,7 +885,8 @@
                             "idle",
                             "invisible",
                             "offline",
-                            "online"
+                            "online",
+                            "testing"
                         ],
                         "type": "string"
                     },
@@ -1057,7 +1055,8 @@
                             "idle",
                             "invisible",
                             "offline",
-                            "online"
+                            "online",
+                            "testing"
                         ],
                         "type": "string"
                     },
@@ -1264,6 +1263,29 @@
                 "required": [
                     "authorize"
                 ]
+            },
+            "ApplicationExternalAssetsSchema": {
+                "type": "object",
+                "properties": {
+                    "urls": {
+                        "minItems": 1,
+                        "maxItems": 10,
+                        "items": {
+                            "type": "string",
+                            "maxLength": 900
+                        },
+                        "type": "array"
+                    }
+                },
+                "required": [
+                    "urls"
+                ]
+            },
+            "ApplicationExternalAssetsResponse": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/components/schemas/ApplicationExternalAsset"
+                }
             },
             "AutomodMentionSpamRuleSchema": {
                 "type": "object",
@@ -1701,7 +1723,7 @@
                     "default_reaction_emoji": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DefaultReaction"
+                                "$ref": "#/components/schemas/DefaultReactionInput"
                             },
                             {
                                 "type": "null"
@@ -1988,17 +2010,24 @@
                         "maxLength": 512,
                         "type": "string"
                     },
+                    "iss": {
+                        "maxLength": 512,
+                        "type": "string"
+                    },
                     "insecure": {
                         "type": "boolean"
                     },
                     "friend_sync": {
                         "type": "boolean"
                     },
-                    "openid_params": {}
+                    "openid_params": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    }
                 },
                 "required": [
-                    "friend_sync",
-                    "insecure",
                     "state"
                 ]
             },
@@ -2389,6 +2418,10 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "home_header": {
+                        "type": "string",
+                        "nullable": true
+                    },
                     "safety_alerts_channel_id": {
                         "maxLength": 20,
                         "type": "string",
@@ -2511,6 +2544,17 @@
                     },
                     "flags": {
                         "type": "integer"
+                    },
+                    "role_ids": {
+                        "maxItems": 250,
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "target_application_id": {
+                        "maxLength": 20,
+                        "type": "string"
                     }
                 }
             },
@@ -3243,6 +3287,10 @@
                         "type": "boolean"
                     },
                     "discovery_splash": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "home_header": {
                         "type": "string",
                         "nullable": true
                     },
@@ -3998,6 +4046,9 @@
                     "icon": {
                         "type": "string"
                     },
+                    "unavailable": {
+                        "type": "boolean"
+                    },
                     "channels": {
                         "type": "array",
                         "items": {
@@ -4060,6 +4111,9 @@
                         "type": "boolean"
                     },
                     "discovery_splash": {
+                        "type": "string"
+                    },
+                    "home_header": {
                         "type": "string"
                     },
                     "safety_alerts_channel_id": {
@@ -4134,9 +4188,6 @@
                     },
                     "premium_tier": {
                         "type": "integer"
-                    },
-                    "unavailable": {
-                        "type": "boolean"
                     },
                     "welcome_screen": {
                         "$ref": "#/components/schemas/GuildWelcomeScreen",
@@ -4434,6 +4485,16 @@
                             "type": "string"
                         }
                     },
+                    "typing_indicator_style": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TypingIndicatorStyle"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "primary_guild": {
                         "$ref": "#/components/schemas/PrimaryGuild"
                     },
@@ -4661,6 +4722,10 @@
                         "type": "boolean"
                     },
                     "discovery_splash": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "home_header": {
                         "type": "string",
                         "nullable": true
                     },
@@ -6393,6 +6458,17 @@
                             }
                         ]
                     },
+                    "address": {
+                        "maxLength": 64,
+                        "type": "string"
+                    },
+                    "port": {
+                        "type": "integer"
+                    },
+                    "mode": {
+                        "maxLength": 64,
+                        "type": "string"
+                    },
                     "sdp": {
                         "maxLength": 65536,
                         "type": "string"
@@ -6422,6 +6498,12 @@
                                 },
                                 "rtx_payload_type": {
                                     "type": "integer"
+                                },
+                                "encode": {
+                                    "type": "boolean"
+                                },
+                                "decode": {
+                                    "type": "boolean"
                                 }
                             },
                             "additionalProperties": false,
@@ -6821,29 +6903,13 @@
                         ]
                     },
                     "display_name_font_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "typing_indicator_style": {
                         "anyOf": [
                             {
-                                "enum": [
-                                    0,
-                                    1,
-                                    10,
-                                    11,
-                                    12,
-                                    13,
-                                    14,
-                                    15,
-                                    16,
-                                    17,
-                                    2,
-                                    3,
-                                    4,
-                                    5,
-                                    6,
-                                    7,
-                                    8,
-                                    9
-                                ],
-                                "type": "number"
+                                "$ref": "#/components/schemas/TypingIndicatorStyleInput"
                             },
                             {
                                 "type": "null"
@@ -6883,10 +6949,6 @@
                                 "type": "null"
                             }
                         ]
-                    },
-                    "typing_indicator_style": {
-                        "type": "integer",
-                        "nullable": true
                     },
                     "push_provider": {
                         "maxLength": 32,
@@ -7769,7 +7831,7 @@
                     "default_reaction_emoji": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DefaultReaction"
+                                "$ref": "#/components/schemas/DefaultReactionInput"
                             },
                             {
                                 "type": "null"
@@ -7969,7 +8031,7 @@
                     "default_reaction_emoji": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/DefaultReaction"
+                                "$ref": "#/components/schemas/DefaultReactionInput"
                             },
                             {
                                 "type": "null"
@@ -10911,6 +10973,12 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "void_tier": {
+                        "description": "A level of The Void, from \"eclipse\" to \"supernova\", that staff grant. Changing it keeps the first grant date. null takes The Void away.",
+                        "maxLength": 32,
+                        "type": "string",
+                        "nullable": true
+                    },
                     "rarity": {
                         "description": "Rarity per badge id as the badge directory reports it: 1 common, 2 rare, 3 epic, 5 mythic. null goes back to the default.",
                         "type": "object",
@@ -11890,6 +11958,7 @@
                 "type": "object",
                 "properties": {
                     "ip": {
+                        "description": "A full IPv4 or IPv6 address, or an address hash from the IP addresses list. Addresses are hashed before they are stored.",
                         "maxLength": 64,
                         "type": "string"
                     },
@@ -12716,6 +12785,327 @@
                     "api",
                     "cdn",
                     "gateway"
+                ]
+            },
+            "LibrecordWellKnownResponse": {
+                "type": "object",
+                "properties": {
+                    "software": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "librecord"
+                            },
+                            "version": {
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "name",
+                            "version"
+                        ]
+                    },
+                    "protocol": {
+                        "type": "integer"
+                    },
+                    "instance": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "icon": {
+                                "type": "string"
+                            },
+                            "logo": {
+                                "type": [
+                                    "null",
+                                    "string"
+                                ]
+                            },
+                            "theme_color": {
+                                "type": "string"
+                            },
+                            "contact_email": {
+                                "type": [
+                                    "null",
+                                    "string"
+                                ]
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "contact_email",
+                            "description",
+                            "icon",
+                            "id",
+                            "logo",
+                            "name",
+                            "theme_color",
+                            "url"
+                        ]
+                    },
+                    "api": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "default_version": {
+                                "type": "string"
+                            },
+                            "versions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "default_version",
+                            "url",
+                            "versions"
+                        ]
+                    },
+                    "gateway": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "encodings": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "compression": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "compression",
+                            "encodings",
+                            "url"
+                        ]
+                    },
+                    "cdn": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "url"
+                        ]
+                    },
+                    "voice": {
+                        "type": "object",
+                        "properties": {
+                            "dave": {
+                                "type": "boolean"
+                            },
+                            "regions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "endpoint": {
+                                            "type": "string"
+                                        },
+                                        "default": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "default",
+                                        "endpoint",
+                                        "id",
+                                        "name"
+                                    ]
+                                }
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "dave",
+                            "regions"
+                        ]
+                    },
+                    "registration": {
+                        "type": "object",
+                        "properties": {
+                            "open": {
+                                "type": "boolean"
+                            },
+                            "invite_required": {
+                                "type": "boolean"
+                            },
+                            "approval_required": {
+                                "type": "boolean"
+                            },
+                            "email_required": {
+                                "type": "boolean"
+                            },
+                            "minimum_age": {
+                                "type": "integer"
+                            },
+                            "join_reason": {
+                                "anyOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "required": {
+                                                "type": "boolean"
+                                            },
+                                            "min_length": {
+                                                "type": "integer"
+                                            },
+                                            "max_length": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "max_length",
+                                            "min_length",
+                                            "required"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "captcha": {
+                                "anyOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "service": {
+                                                "type": "string",
+                                                "const": "cap"
+                                            },
+                                            "sitekey": {
+                                                "type": "string"
+                                            },
+                                            "endpoint": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "endpoint",
+                                            "service",
+                                            "sitekey"
+                                        ]
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "approval_required",
+                            "captcha",
+                            "email_required",
+                            "invite_required",
+                            "join_reason",
+                            "minimum_age",
+                            "open"
+                        ]
+                    },
+                    "e2ee": {
+                        "type": "object",
+                        "properties": {
+                            "protocol": {
+                                "type": "integer"
+                            },
+                            "direct_messages": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "direct_messages",
+                            "protocol"
+                        ]
+                    },
+                    "links": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string"
+                            },
+                            "support": {
+                                "type": "string"
+                            },
+                            "blog": {
+                                "type": "string"
+                            },
+                            "terms": {
+                                "type": "string"
+                            },
+                            "privacy": {
+                                "type": "string"
+                            },
+                            "guidelines": {
+                                "type": "string"
+                            },
+                            "developers": {
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "blog",
+                            "developers",
+                            "guidelines",
+                            "privacy",
+                            "status",
+                            "support",
+                            "terms"
+                        ]
+                    }
+                },
+                "required": [
+                    "api",
+                    "cdn",
+                    "e2ee",
+                    "gateway",
+                    "instance",
+                    "links",
+                    "protocol",
+                    "registration",
+                    "software",
+                    "voice"
                 ]
             },
             "AdminAutomodWordListSchema": {
@@ -14044,6 +14434,77 @@
                         "nullable": true
                     },
                     "featured": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "AdminChangelogCreateSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "type": "string"
+                    },
+                    "date": {
+                        "maxLength": 10,
+                        "type": "string"
+                    },
+                    "body": {
+                        "maxLength": 100000,
+                        "type": "string"
+                    },
+                    "image": {
+                        "maxLength": 80,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "youtube_video_id": {
+                        "maxLength": 200,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "published": {
+                        "type": "boolean"
+                    },
+                    "show_on_startup": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "title"
+                ]
+            },
+            "AdminChangelogUpdateSchema": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "type": "string"
+                    },
+                    "date": {
+                        "maxLength": 10,
+                        "type": "string"
+                    },
+                    "body": {
+                        "maxLength": 100000,
+                        "type": "string"
+                    },
+                    "image": {
+                        "maxLength": 80,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "youtube_video_id": {
+                        "maxLength": 200,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "published": {
+                        "type": "boolean"
+                    },
+                    "show_on_startup": {
                         "type": "boolean"
                     }
                 }
@@ -15578,6 +16039,16 @@
                             "type": "string"
                         }
                     },
+                    "typing_indicator_style": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TypingIndicatorStyle"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "primary_guild": {
                         "$ref": "#/components/schemas/PrimaryGuild"
                     },
@@ -15599,6 +16070,47 @@
                     "system",
                     "username"
                 ]
+            },
+            "TypingIndicatorStyle": {
+                "type": "object",
+                "properties": {
+                    "emojis": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TypingIndicatorEmoji"
+                        }
+                    },
+                    "animation": {
+                        "type": "integer"
+                    },
+                    "typing_suggestion": {
+                        "type": "integer"
+                    },
+                    "custom_text": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "required": [
+                    "animation",
+                    "emojis",
+                    "typing_suggestion"
+                ]
+            },
+            "TypingIndicatorEmoji": {
+                "type": "object",
+                "properties": {
+                    "unicode_emoji": {
+                        "type": "string"
+                    },
+                    "custom_emoji_id": {
+                        "description": "A Twitter-like snowflake, except the epoch is 2015-01-01T00:00:00.000Z\n```\nIf we have a snowflake '266241948824764416' we can represent it as binary:\n\n64                                          22     17     12          0\n 000000111011000111100001101001000101000000  00001  00000  000000000000\n      number of ms since Discord epoch       worker  pid    increment\n```",
+                        "type": "string"
+                    },
+                    "animated": {
+                        "type": "boolean"
+                    }
+                }
             },
             "PrimaryGuild": {
                 "type": "object",
@@ -15685,6 +16197,16 @@
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/DisplayNameStyle"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "typing_indicator_style": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TypingIndicatorStyle"
                             },
                             {
                                 "type": "null"
@@ -15884,6 +16406,18 @@
                     },
                     "session_id": {
                         "type": "string"
+                    },
+                    "content_classification": {
+                        "type": "object",
+                        "properties": {
+                            "loaded": {
+                                "type": "boolean"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "loaded"
+                        ]
                     }
                 },
                 "required": [
@@ -16461,10 +16995,12 @@
                         "default": false
                     },
                     "emoji_id": {
-                        "type": "string"
+                        "type": "string",
+                        "nullable": true
                     },
                     "emoji_name": {
-                        "type": "string"
+                        "type": "string",
+                        "nullable": true
                     },
                     "position": {
                         "type": "integer",
@@ -16951,6 +17487,10 @@
                         "type": "string",
                         "nullable": true
                     },
+                    "registration_ip_group": {
+                        "type": "string",
+                        "nullable": true
+                    },
                     "settings": {
                         "$ref": "#/components/schemas/UserSettings"
                     },
@@ -16971,6 +17511,16 @@
                     },
                     "display_name_styles": {
                         "$ref": "#/components/schemas/DisplayNameStyle"
+                    },
+                    "typing_indicator_style": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TypingIndicatorStyle"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     },
                     "collectibles": {
                         "$ref": "#/components/schemas/Collectibles"
@@ -17159,6 +17709,9 @@
                     "last_seen_ip": {
                         "type": "string"
                     },
+                    "last_seen_ip_group": {
+                        "type": "string"
+                    },
                     "last_seen_location": {
                         "type": "string"
                     },
@@ -17187,7 +17740,8 @@
                     "idle",
                     "invisible",
                     "offline",
-                    "online"
+                    "online",
+                    "testing"
                 ],
                 "type": "string"
             },
@@ -17557,7 +18111,8 @@
                             "idle",
                             "invisible",
                             "offline",
-                            "online"
+                            "online",
+                            "testing"
                         ],
                         "type": "string",
                         "default": "online"
@@ -17832,8 +18387,30 @@
                     },
                     "rarity": {
                         "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+                    },
+                    "the_void": {
+                        "$ref": "#/components/schemas/VoidBadgeGrant"
                     }
                 }
+            },
+            "VoidBadgeGrant": {
+                "type": "object",
+                "properties": {
+                    "tier": {
+                        "type": "string"
+                    },
+                    "granted_at": {
+                        "type": "string"
+                    },
+                    "tier_set_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "granted_at",
+                    "tier",
+                    "tier_set_at"
+                ]
             },
             "UserGuildSettings": {
                 "type": "object",
@@ -18329,6 +18906,9 @@
                         "type": "string"
                     },
                     "discovery_splash": {
+                        "type": "string"
+                    },
+                    "home_header": {
                         "type": "string"
                     },
                     "explicit_content_filter": {
@@ -19464,6 +20044,25 @@
                     },
                     "flags": {
                         "type": "integer"
+                    },
+                    "role_ids": {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "assigned_roles": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Role"
+                        }
                     }
                 },
                 "required": [
@@ -21019,6 +21618,7 @@
                     61,
                     62,
                     63,
+                    67,
                     1000,
                     255
                 ]
@@ -22584,9 +23184,40 @@
                     "invisible",
                     "offline",
                     "online",
+                    "testing",
                     "unknown"
                 ],
                 "type": "string"
+            },
+            "ApplicationExternalAsset": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string"
+                    },
+                    "external_asset_path": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "external_asset_path",
+                    "url"
+                ]
+            },
+            "DefaultReactionInput": {
+                "type": "object",
+                "properties": {
+                    "emoji_id": {
+                        "maxLength": 20,
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "emoji_name": {
+                        "maxLength": 32,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
             },
             "AllowedMentions": {
                 "type": "object",
@@ -24682,7 +25313,7 @@
                 "properties": {
                     "allowSlowmodeBypass": {
                         "type": "boolean",
-                        "default": false
+                        "default": true
                     },
                     "maxPins": {
                         "type": "integer",
@@ -24823,6 +25454,9 @@
                     "connection": {
                         "$ref": "#/components/schemas/RateLimitOptions"
                     },
+                    "domainConnection": {
+                        "$ref": "#/components/schemas/RateLimitOptions"
+                    },
                     "attachment": {
                         "$ref": "#/components/schemas/RateLimitOptions"
                     },
@@ -24839,6 +25473,7 @@
                     "auth",
                     "channel",
                     "connection",
+                    "domainConnection",
                     "expression",
                     "guild",
                     "guildCreate",
@@ -25285,6 +25920,46 @@
                                 ]
                             }
                         ]
+                    }
+                }
+            },
+            "TypingIndicatorStyleInput": {
+                "type": "object",
+                "properties": {
+                    "emojis": {
+                        "maxItems": 3,
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TypingIndicatorEmojiInput"
+                        }
+                    },
+                    "animation": {
+                        "minimum": 0,
+                        "maximum": 3,
+                        "type": "integer"
+                    },
+                    "typing_suggestion": {
+                        "minimum": 0,
+                        "maximum": 7,
+                        "type": "integer"
+                    },
+                    "custom_text": {
+                        "maxLength": 64,
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "TypingIndicatorEmojiInput": {
+                "type": "object",
+                "properties": {
+                    "unicode_emoji": {
+                        "maxLength": 64,
+                        "type": "string"
+                    },
+                    "custom_emoji_id": {
+                        "pattern": "^\\d{1,20}$",
+                        "type": "string"
                     }
                 }
             },
@@ -27196,7 +27871,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Who counts toward the accounts per address caps for one address. IPv4 addresses count on their own and IPv6 addresses count per /64. Operators and deleted or disabled accounts don't count.",
+                "description": "Who counts toward the accounts per address caps for one address. IPv4 addresses count on their own and IPv6 addresses count per /64. Accounts are found by the hash of the address's group, and `fingerprint` is the start of that hash. Operators and deleted or disabled accounts don't count.",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -28359,6 +29034,262 @@
                             "type": "string"
                         },
                         "description": "post_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            }
+        },
+        "/api/admin/changelogs/": {
+            "get": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "List What's New changelogs, drafts included, newest first",
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            },
+            "post": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Write a What's New changelog, as a draft or published",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminChangelogCreateSchema"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            }
+        },
+        "/api/admin/changelogs/{changelog_id}/": {
+            "get": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Get a What's New changelog",
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "changelog_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "changelog_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            },
+            "patch": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Edit, publish or unpublish a What's New changelog",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminChangelogUpdateSchema"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "changelog_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "changelog_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            },
+            "delete": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Delete a What's New changelog",
+                "responses": {
+                    "204": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "changelog_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "changelog_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            }
+        },
+        "/api/admin/connections/": {
+            "get": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "List connected account providers and their settings",
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            },
+            "patch": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Turn third-party connections on or off and set the public address used in callback URLs",
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
+                ]
+            }
+        },
+        "/api/admin/connections/{connection_id}/": {
+            "patch": {
+                "x-right-required": "OPERATOR",
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "description": "Turn a connected account provider on or off and set its credentials",
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "connection_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_id"
                     }
                 ],
                 "tags": [
@@ -30846,7 +31777,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Instance bans on IP addresses, newest first. `kind` is all, explicit for bans staff or a raid action made, or spread for bans that spread from another ban. `q` matches the start of an address. Each ban names the ban it spread from, the account it belongs to and how many bans it spread to.",
+                "description": "Instance bans on hashed IP addresses, newest first. `kind` is all, explicit for bans staff or a raid action made, or spread for bans that spread from another ban. `q` is a full address or address hash and finds the bans on exactly that address. Each ban gives its address hash as `ip` and the hash's first 10 characters as `fingerprint`, and names the ban it spread from, the account it belongs to and how many bans it spread to.",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -30869,7 +31800,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "The start of an address"
+                        "description": "A full IPv4 or IPv6 address, or an address hash"
                     },
                     {
                         "name": "limit",
@@ -30905,7 +31836,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Ban an IP address. Registration and sign-in from it are refused, and existing tokens used from it stop working. An account that uses a token from a banned address gets an instance ban of its own.",
+                "description": "Ban an IP address, given as a full address or as an address hash from the IP addresses list. Only its hash is stored. Registration and sign-in from it are refused, and existing tokens used from it stop working. An account that uses a token from a banned address gets an instance ban of its own.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -30940,7 +31871,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Lift up to 100 IP bans at once, each together with the bans it spread. The response lists the lifted bans with their addresses and reasons, the ids that matched no address ban and how many spread bans went with them.",
+                "description": "Lift up to 100 IP bans at once, each together with the bans it spread. The response lists the lifted bans with their address hashes, fingerprints and reasons, the ids that matched no address ban and how many spread bans went with them.",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -31011,7 +31942,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "IP addresses that accounts registered on or signed in from, with how many accounts used each, most accounts first. Session addresses disappear when the session ends; registration addresses stay.",
+                "description": "Hashed IP addresses that accounts registered on or signed in from, with how many accounts used each, most accounts first. Each row gives the full hash as `ip` and its first 10 characters as `fingerprint`. Session addresses disappear when the session ends; registration addresses stay.",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -31025,7 +31956,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "The start of an address"
+                        "description": "A full IPv4 or IPv6 address, or an address hash, to find exactly"
                     },
                     {
                         "name": "limit",
@@ -32799,7 +33730,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Search users on this instance. `q` matches an exact id, an IP address, a handle such as `@name` or `name#1234`, or part of a username, display name or email. `ip` lists the accounts that registered on or signed in from an address.",
+                "description": "Search users on this instance. `q` matches an exact id, a full IP address or address hash, a handle such as `@name` or `name#1234`, or part of a username, display name or email. `ip` lists the accounts that registered on or signed in from an address, found by hashing it.",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -32821,7 +33752,7 @@
                         "schema": {
                             "type": "string"
                         },
-                        "description": "An IPv4 or IPv6 address"
+                        "description": "A full IPv4 or IPv6 address, or an address hash"
                     },
                     {
                         "name": "filter",
@@ -32887,7 +33818,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "The user's Nitro badge level, rarity overrides and badges",
+                "description": "The user's Nitro badge level, The Void level, rarity overrides and badges",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -32921,7 +33852,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "Set the user's Nitro badge level or start date and override the rarity of their badges",
+                "description": "Set the user's Nitro badge level or start date, grant, change or remove The Void and override the rarity of their badges",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -35184,6 +36115,61 @@
                 ]
             }
         },
+        "/api/applications/{application_id}/external-assets/": {
+            "post": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ApplicationExternalAssetsSchema"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApplicationExternalAssetsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/APIErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "application_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
         "/api/applications/{application_id}/guilds/{guild_id}/commands/": {
             "get": {
                 "security": [
@@ -36003,6 +36989,34 @@
                                 }
                             }
                         }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "application_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/applications/{application_id}/rpc/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "No description available"
                     }
                 },
                 "parameters": [
@@ -36841,6 +37855,38 @@
                         "label": "Spacebar-only",
                         "color": "red"
                     }
+                ]
+            }
+        },
+        "/api/auth/handoff/exchange/": {
+            "post": {
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/auth/handoff/": {
+            "post": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
                 ]
             }
         },
@@ -38815,7 +39861,7 @@
         "/api/channels/{channel_id}/messages/{message_id}/": {
             "patch": {
                 "x-right-required": "SEND_MESSAGES",
-                "x-permission-required": "SEND_MESSAGES",
+                "x-permission-required": "VIEW_CHANNEL",
                 "security": [
                     {
                         "bearer": []
@@ -40864,7 +41910,7 @@
         },
         "/api/channels/{channel_id}/typing/": {
             "post": {
-                "x-permission-required": "SEND_MESSAGES",
+                "x-permission-required": "VIEW_CHANNEL",
                 "security": [
                     {
                         "bearer": []
@@ -41135,6 +42181,23 @@
                 ]
             }
         },
+        "/api/collectibles-collection-sequenced-offers/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
         "/api/collectibles-products/{sku_id}/": {
             "get": {
                 "security": [
@@ -41279,6 +42342,106 @@
                 ]
             }
         },
+        "/api/connections/{connection_name}/callback/session-handoff/": {
+            "get": {
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/APIErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "connection_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_name"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            },
+            "post": {
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/APIErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "connection_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_name"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/connections/{connection_name}/client-metadata.json/": {
+            "get": {
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/APIErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "connection_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_name"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
         "/api/connections/{connection_name}/{connection_id}/refresh/": {
             "post": {
                 "security": [
@@ -41309,6 +42472,34 @@
                             "type": "string"
                         },
                         "description": "connection_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/content-inventory/users/@me/similar-games/{game_id}/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "game_id"
                     }
                 ],
                 "tags": [
@@ -41777,6 +42968,24 @@
                 ]
             }
         },
+        "/api/games/detectable/executables/": {
+            "get": {
+                "security": [
+                    {}
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    },
+                    "304": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
         "/api/games/detectable/": {
             "get": {
                 "security": [
@@ -41813,6 +43022,34 @@
                         "description": "No description available"
                     }
                 },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/games/{game_id}/announcements/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "game_id"
+                    }
+                ],
                 "tags": [
                     "api"
                 ]
@@ -53122,6 +54359,40 @@
                 ]
             }
         },
+        "/api/storefront/collections/applications/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/storefront/collections/": {
+            "get": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "tags": [
+                    "api"
+                ]
+            }
+        },
         "/api/storefront/products/skus/": {
             "get": {
                 "security": [
@@ -54082,6 +55353,43 @@
                 ]
             },
             "delete": {
+                "security": [
+                    {
+                        "bearer": []
+                    }
+                ],
+                "responses": {
+                    "default": {
+                        "description": "No description available"
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "connection_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_name"
+                    },
+                    {
+                        "name": "connection_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "connection_id"
+                    }
+                ],
+                "tags": [
+                    "api"
+                ]
+            }
+        },
+        "/api/users/@me/connections/{connection_name}/{connection_id}/now-playing/": {
+            "get": {
                 "security": [
                     {
                         "bearer": []
@@ -58127,7 +59435,7 @@
                         "bearer": []
                     }
                 ],
-                "description": "The profile badges a user owns, in their display order. Your own list also has the badges you hid, marked hidden.",
+                "description": "The profile badges a user owns, in their display order. Your own list also has the badges you hid, marked hidden. Empty when the user's private profile hides it from you.",
                 "responses": {
                     "default": {
                         "description": "No description available"
@@ -59273,6 +60581,35 @@
                 },
                 "tags": [
                     "api"
+                ]
+            }
+        },
+        "/.well-known/librecord/": {
+            "get": {
+                "security": [
+                    {}
+                ],
+                "description": "Describe this instance for clients that connect to it: its name and icon, its API, gateway, CDN and voice endpoints, and how to register",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LibrecordWellKnownResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "tags": [
+                    ""
+                ],
+                "x-badges": [
+                    {
+                        "label": "Spacebar-only",
+                        "color": "red"
+                    }
                 ]
             }
         },
