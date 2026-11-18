@@ -33,6 +33,10 @@
       /^https:\/\/cdn\.discordapp\.com\/(media\/v1\/collectibles-shop|badge-icons|avatar-decoration-presets|app-icons|bad-domains)\//,
       (match, prefix) => `${cdn()}/${prefix}/`,
     ],
+    [
+      /^(?:https:)?\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)((?:\/[^?#]*)?)/,
+      (match, path) => (path && instancePaths.test(path) ? `${cdn()}${path}` : match),
+    ],
   ];
   const downgraded =
     /^(?:http:)?\/\/((?:[\w-]+\.)*(?:discord\.com|discordapp\.com|discordapp\.net|discord\.gg|discord\.media|dis\.gd|discordstatus\.com))(?=[/:?#]|$)/i;
