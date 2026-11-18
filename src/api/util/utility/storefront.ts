@@ -67,7 +67,8 @@ const sku = (product: CollectibleProduct, productId: string, option: { name: str
     };
 };
 
-const product = (category: CollectibleCategory, entry: CollectibleProduct) => {
+/** The storefront product for a catalog product and its collection. */
+export const storefrontProduct = (category: CollectibleCategory, entry: CollectibleProduct) => {
     const variants = entry.type === CollectibleItemType.VARIANTS_GROUP ? (entry.variants ?? []) : [];
     const options = variants.length
         ? [{ name: entry.name, option_values: variants.map((variant) => String(variant.variant_label ?? variant.name)) }]
@@ -114,9 +115,24 @@ export const storefrontCollection = (category: CollectibleCategory, includeProdu
         ...(category.unpublished_at ? { unpublish_settings: { will_unpublish_at: category.unpublished_at } } : {}),
         is_orbs_exclusive: orbsExclusiveCategory(category),
         tenant_metadata: { collectibles: metadata },
-        products: includeProducts ? category.products.map((entry) => product(category, entry)) : [],
+        products: includeProducts ? category.products.map((entry) => storefrontProduct(category, entry)) : [],
     };
 };
 
 /** The listed categories in the Shop's order. Orbs-only ones stay in, flagged by is_orbs_exclusive, as on Discord. */
 export const storefrontCategories = async () => (await Collectibles.categories()).filter((category) => category.products.length);
+
+const productSkus = (entry: CollectibleProduct) => new Set([entry.sku_id, ...(entry.variants ?? []).map((variant) => variant.sku_id)]);
+
+/** The storefront products for the given SKUs; a variant SKU resolves to the product that groups it. */
+export const storefrontProductsBySku = async (sku_ids: string[]) => {
+    const wanted = new Set(sku_ids);
+    if (!wanted.size) return [];
+    const products = new Map<string, ReturnType<typeof storefrontProduct>>();
+    for (const category of await storefrontCategories())
+        for (const entry of category.products) {
+            if (products.has(entry.sku_id) || ![...productSkus(entry)].some((sku_id) => wanted.has(sku_id))) continue;
+            products.set(entry.sku_id, storefrontProduct(category, entry));
+        }
+    return [...products.values()];
+};
