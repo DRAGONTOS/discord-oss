@@ -9,7 +9,7 @@ Set `NATIVE_VOICE=true` next to `PION_SFU_BIN` or `PION_SFU_IPC`. The server the
 - sends `NATIVE_VOICE: true` in `GLOBAL_ENV`, and `FosscordDesktop` lets the official desktop app pick its native engine instead of forcing the browser one,
 - accepts `protocol: "udp"` in SELECT_PROTOCOL.
 
-Without it, or without the Pion SFU, SELECT_PROTOCOL with `udp` is closed with code 4000 and the desktop app keeps the browser engine, as before. Browsers and the Discord OSS Electron app always use WebRTC.
+Without it, or without the Pion SFU, SELECT_PROTOCOL with `udp` is closed with code 4000 and the desktop app keeps the browser engine, as before. Browsers and the Librecord Electron app always use WebRTC.
 
 No new port is needed. Native clients use the same UDP port as WebRTC, `WRTC_PORT` in Docker or `WRTC_PORT_MIN` for a native install.
 

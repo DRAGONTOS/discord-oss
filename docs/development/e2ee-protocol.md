@@ -2,7 +2,7 @@
 
 This is the wire format of encrypted DMs and group DMs, protocol version 1, for anyone writing a client other than the web one. [e2ee.md](../features/e2ee.md) describes what users see and the security model. The reference implementation is `client/e2ee/src`, mainly `crypto.ts`, `engine.ts`, `backup.ts`, `files.ts` and `link.ts`, and the server side is `src/api/util/utility/e2ee.ts` and the routes under `src/api/routes/e2ee` and `src/api/routes/users/@me/e2ee`. The server holds a second implementation in Node's crypto: `src/api/util/utility/systemEncryption.ts` encrypts the official account's messages, and `src/api/util/utility/reports.ts` verifies and decrypts reported ones. It is the shorter of the two to port. When this page and the code disagree, the code wins, and the page is wrong.
 
-`/.well-known/discord-oss` reports the version as `e2ee.protocol`, as [instance-discovery.md](instance-discovery.md) describes.
+`/.well-known/librecord` reports the version as `e2ee.protocol`, as [instance-discovery.md](instance-discovery.md) describes.
 
 ## Conventions
 

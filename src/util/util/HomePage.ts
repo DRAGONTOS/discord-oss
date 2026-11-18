@@ -36,7 +36,7 @@ export const homePage = (origin?: string) => {
     const faq: [string, string][] = [
         [
             `What is ${name}?`,
-            `<p>${name} is a chat service with servers, channels, DMs, voice and video. It runs on <a href="https://github.com/meowcorded/meowcord">Discord OSS</a>, a self-hosted server that speaks the same protocol as Discord, so the app in your browser looks and works the way you'd expect.</p>`,
+            `<p>${name} is a chat service with servers, channels, DMs, voice and video. It runs on <a href="https://github.com/libre-cord/librecord">Librecord</a>, a self-hosted server that speaks the same protocol as Discord, so the app in your browser looks and works the way you'd expect.</p>`,
         ],
         [
             "Is this Discord?",
@@ -57,7 +57,7 @@ export const homePage = (origin?: string) => {
         ],
         [
             `Who runs ${name}?`,
-            `<p>${name} is run independently by its own operators, not by the Discord OSS project.${contact ? ` You can reach them at ${contact}.` : ""} Read the <a href="/terms">terms</a>, the <a href="/privacy">privacy policy</a> and the <a href="/guidelines">community guidelines</a> before you join.</p>`,
+            `<p>${name} is run independently by its own operators, not by the Librecord project.${contact ? ` You can reach them at ${contact}.` : ""} Read the <a href="/terms">terms</a>, the <a href="/privacy">privacy policy</a> and the <a href="/guidelines">community guidelines</a> before you join.</p>`,
         ],
     ];
 

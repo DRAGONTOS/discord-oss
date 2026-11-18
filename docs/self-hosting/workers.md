@@ -1,6 +1,6 @@
 # Cloudflare Workers
 
-Discord OSS can run as Cloudflare Workers instead of the Bun server. Nobody has deployed this yet. It was tested with `wrangler dev` on one machine, and the Bun server in [setup.md](setup.md) is still the supported way to host an instance. Voice doesn't work on Workers.
+Librecord can run as Cloudflare Workers instead of the Bun server. Nobody has deployed this yet. It was tested with `wrangler dev` on one machine, and the Bun server in [setup.md](setup.md) is still the supported way to host an instance. Voice doesn't work on Workers.
 
 | Worker             | Directory         | What it does                                                                                              |
 | ------------------ | ----------------- | --------------------------------------------------------------------------------------------------------- |

@@ -1,4 +1,4 @@
-import { DiscordOssWellKnownResponse } from "@spacebar/schemas";
+import { LibrecordWellKnownResponse } from "@spacebar/schemas";
 import { ConfigValue } from "@spacebar/util";
 
 export const INSTANCE_DISCOVERY_PROTOCOL = 1;
@@ -23,14 +23,14 @@ const withoutTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 
 const configuredOrigin = (value: string | null | undefined) => (value && URL.canParse(value) ? withoutTrailingSlash(value) : null);
 
-export function buildInstanceDiscovery(input: InstanceDiscoveryInput): DiscordOssWellKnownResponse {
+export function buildInstanceDiscovery(input: InstanceDiscoveryInput): LibrecordWellKnownResponse {
     const { config, origin } = input;
     const register = config.register;
     const gatewayUrl = configuredOrigin(config.gateway.endpointPublic) ?? origin.replace(/^http/, "ws");
     const apiBase = configuredOrigin(config.api.endpointPublic?.replace(/\/+$/, "").replace(/\/api(\/v\d+)?$/, "")) ?? origin;
     const cdnUrl = configuredOrigin(config.cdn.endpointPublic) ?? origin;
     return {
-        software: { name: "discord-oss", version: input.version },
+        software: { name: "librecord", version: input.version },
         protocol: INSTANCE_DISCOVERY_PROTOCOL,
         instance: {
             id: config.general.instanceId,

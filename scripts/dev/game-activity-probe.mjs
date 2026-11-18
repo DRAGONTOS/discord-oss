@@ -58,7 +58,7 @@ async function open(token, label, bridge) {
             const detected = { pid: 4242, id: game.id, name: game.name, exePath: "/Applications/Fake Game.app/Contents/MacOS/fake", exeName: "fake", cmdLine: "" };
             const candidate = { pid: 4343, name: "Indie Game", exePath: "/Applications/Indie Game.app/Contents/MacOS/Indie Game", exeName: "Indie Game", cmdLine: "" };
             window.__gameWatches = [];
-            window.DiscordOSS = {
+            window.Librecord = {
                 platform: "darwin",
                 games: {
                     watch(options) {

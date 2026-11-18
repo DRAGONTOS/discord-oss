@@ -61,7 +61,7 @@ let running = false;
 let lastGames: RunningGame[] = [];
 
 const bridge = (): GamesBridge | undefined => {
-    const desktop = (window as unknown as { DiscordOSS?: { games?: GamesBridge }; DiscordNative?: unknown }).DiscordOSS;
+    const desktop = (window as unknown as { Librecord?: { games?: GamesBridge }; DiscordNative?: unknown }).Librecord;
     return (window as unknown as { DiscordNative?: unknown }).DiscordNative ? undefined : desktop?.games;
 };
 

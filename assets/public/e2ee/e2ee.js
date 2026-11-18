@@ -454,7 +454,7 @@ ${final ? 1 : 0}`);
       nameOf: (id) => names.get(id)
     };
   };
-  // ../discord-oss/node_modules/@hpke/common/esm/src/errors.js
+  // node_modules/@hpke/common/esm/src/errors.js
   class HpkeError extends Error {
     constructor(e) {
       let message;
@@ -501,7 +501,7 @@ ${final ? 1 : 0}`);
 
   class NotSupportedError extends HpkeError {
   }
-  // ../discord-oss/node_modules/@hpke/common/esm/_dnt.shims.js
+  // node_modules/@hpke/common/esm/_dnt.shims.js
   var dntGlobals = {};
   var dntGlobalThis = createMergeProxy(globalThis, dntGlobals);
   function createMergeProxy(baseObj, extObj) {
@@ -558,7 +558,7 @@ ${final ? 1 : 0}`);
     });
   }
 
-  // ../discord-oss/node_modules/@hpke/common/esm/src/algorithm.js
+  // node_modules/@hpke/common/esm/src/algorithm.js
   async function loadSubtleCrypto() {
     if (dntGlobalThis !== undefined && globalThis.crypto !== undefined) {
       return globalThis.crypto.subtle;
@@ -587,7 +587,7 @@ ${final ? 1 : 0}`);
       this._api = await loadSubtleCrypto();
     }
   }
-  // ../discord-oss/node_modules/@hpke/common/esm/src/identifiers.js
+  // node_modules/@hpke/common/esm/src/identifiers.js
   var Mode = {
     Base: 0,
     Psk: 1,
@@ -626,13 +626,13 @@ ${final ? 1 : 0}`);
     Chacha20Poly1305: 3,
     ExportOnly: 65535
   };
-  // ../discord-oss/node_modules/@hpke/common/esm/src/consts.js
+  // node_modules/@hpke/common/esm/src/consts.js
   var INPUT_LENGTH_LIMIT = 8192;
   var INFO_LENGTH_LIMIT = 268435456;
   var MINIMUM_PSK_LENGTH = 32;
   var EMPTY = /* @__PURE__ */ new Uint8Array(0);
 
-  // ../discord-oss/node_modules/@hpke/common/esm/src/interfaces/kemInterface.js
+  // node_modules/@hpke/common/esm/src/interfaces/kemInterface.js
   var SUITE_ID_HEADER_KEM = /* @__PURE__ */ new Uint8Array([
     75,
     69,
@@ -641,7 +641,7 @@ ${final ? 1 : 0}`);
     0
   ]);
 
-  // ../discord-oss/node_modules/@hpke/common/esm/src/kdfs/hkdf.js
+  // node_modules/@hpke/common/esm/src/kdfs/hkdf.js
   var HPKE_VERSION = /* @__PURE__ */ new Uint8Array([
     72,
     80,
@@ -813,7 +813,7 @@ ${final ? 1 : 0}`);
     }
   }
 
-  // ../discord-oss/node_modules/@hpke/common/esm/src/utils/misc.js
+  // node_modules/@hpke/common/esm/src/utils/misc.js
   var isCryptoKeyPair = (x) => typeof x === "object" && x !== null && typeof x.privateKey === "object" && typeof x.publicKey === "object";
   function i2Osp(n, w) {
     if (w <= 0) {
@@ -855,7 +855,7 @@ ${final ? 1 : 0}`);
     return buf;
   }
 
-  // ../discord-oss/node_modules/@hpke/common/esm/src/kems/dhkem.js
+  // node_modules/@hpke/common/esm/src/kems/dhkem.js
   var LABEL_EAE_PRK = /* @__PURE__ */ new Uint8Array([
     101,
     97,
@@ -1038,7 +1038,7 @@ ${final ? 1 : 0}`);
       return await this._kdf.extractAndExpand(EMPTY, labeledIkm, labeledInfo, this.secretSize);
     }
   }
-  // ../discord-oss/node_modules/@hpke/common/esm/src/interfaces/dhkemPrimitives.js
+  // node_modules/@hpke/common/esm/src/interfaces/dhkemPrimitives.js
   var KEM_USAGES = ["deriveBits"];
   var LABEL_DKP_PRK = /* @__PURE__ */ new Uint8Array([
     100,
@@ -1050,9 +1050,9 @@ ${final ? 1 : 0}`);
     107
   ]);
   var LABEL_SK = /* @__PURE__ */ new Uint8Array([115, 107]);
-  // ../discord-oss/node_modules/@hpke/common/esm/src/interfaces/aeadEncryptionContext.js
+  // node_modules/@hpke/common/esm/src/interfaces/aeadEncryptionContext.js
   var AEAD_USAGES = ["encrypt", "decrypt"];
-  // ../discord-oss/node_modules/@hpke/core/esm/src/aeads/aesGcm.js
+  // node_modules/@hpke/core/esm/src/aeads/aesGcm.js
   class AesGcmContext extends NativeAlgorithm {
     constructor(key) {
       super();
@@ -1166,14 +1166,14 @@ ${final ? 1 : 0}`);
       });
     }
   }
-  // ../discord-oss/node_modules/@hpke/core/esm/src/utils/emitNotSupported.js
+  // node_modules/@hpke/core/esm/src/utils/emitNotSupported.js
   function emitNotSupported() {
     return new Promise((_resolve, reject) => {
       reject(new NotSupportedError("Not supported"));
     });
   }
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/exporterContext.js
+  // node_modules/@hpke/core/esm/src/exporterContext.js
   var LABEL_SEC = new Uint8Array([115, 101, 99]);
 
   class ExporterContextImpl {
@@ -1236,7 +1236,7 @@ ${final ? 1 : 0}`);
     }
   }
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/encryptionContext.js
+  // node_modules/@hpke/core/esm/src/encryptionContext.js
   class EncryptionContextImpl extends ExporterContextImpl {
     constructor(api, kdf, params) {
       super(api, kdf, params.exporterSecret);
@@ -1297,7 +1297,7 @@ ${final ? 1 : 0}`);
     }
   }
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/mutex.js
+  // node_modules/@hpke/core/esm/src/mutex.js
   var __classPrivateFieldGet = function(receiver, state, kind, f) {
     if (kind === "a" && !f)
       throw new TypeError("Private accessor was defined without a getter");
@@ -1333,7 +1333,7 @@ ${final ? 1 : 0}`);
   }
   _Mutex_locked = new WeakMap;
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/recipientContext.js
+  // node_modules/@hpke/core/esm/src/recipientContext.js
   var __classPrivateFieldGet2 = function(receiver, state, kind, f) {
     if (kind === "a" && !f)
       throw new TypeError("Private accessor was defined without a getter");
@@ -1374,7 +1374,7 @@ ${final ? 1 : 0}`);
   }
   _RecipientContextImpl_mutex = new WeakMap;
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/senderContext.js
+  // node_modules/@hpke/core/esm/src/senderContext.js
   var __classPrivateFieldGet3 = function(receiver, state, kind, f) {
     if (kind === "a" && !f)
       throw new TypeError("Private accessor was defined without a getter");
@@ -1422,7 +1422,7 @@ ${final ? 1 : 0}`);
   }
   _SenderContextImpl_mutex = new WeakMap;
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/cipherSuiteNative.js
+  // node_modules/@hpke/core/esm/src/cipherSuiteNative.js
   var LABEL_BASE_NONCE = new Uint8Array([
     98,
     97,
@@ -1625,12 +1625,12 @@ ${final ? 1 : 0}`);
     }
   }
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/native.js
+  // node_modules/@hpke/core/esm/src/native.js
   class CipherSuite extends CipherSuiteNative {
   }
   class HkdfSha256 extends HkdfSha256Native {
   }
-  // ../discord-oss/node_modules/@hpke/core/esm/src/kems/dhkemPrimitives/x25519.js
+  // node_modules/@hpke/core/esm/src/kems/dhkemPrimitives/x25519.js
   var ALG_NAME = "X25519";
   var PKCS8_ALG_ID_X25519 = new Uint8Array([
     48,
@@ -1847,7 +1847,7 @@ ${final ? 1 : 0}`);
     }
   }
 
-  // ../discord-oss/node_modules/@hpke/core/esm/src/kems/dhkemX25519.js
+  // node_modules/@hpke/core/esm/src/kems/dhkemX25519.js
   class DhkemX25519HkdfSha256 extends Dhkem {
     constructor() {
       const kdf = new HkdfSha256Native;
@@ -1967,7 +1967,7 @@ ${deviceId}
 ${prekeyId}
 ${publicKey}`;
 
-  // ../discord-oss/node_modules/hash-wasm/dist/index.esm.js
+  // node_modules/hash-wasm/dist/index.esm.js
   /*!
    * hash-wasm (https://www.npmjs.com/package/hash-wasm)
    * (c) Dani Biro

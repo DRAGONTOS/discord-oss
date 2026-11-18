@@ -120,7 +120,7 @@ export const prepareClientHtml = (source: string) =>
         .replace(/<link[^>]*rel="(?:shortcut )?icon"[^>]*>/g, "")
         .replace(
             "</body>",
-            `<footer id="meowcord-credit" hidden>this instance is running <a href="https://github.com/meowcorded/meowcord">Discord OSS</a>!</footer><script src="/assets/meowcord-credit.js"></script></body>`,
+            `<footer id="meowcord-credit" hidden>this instance is running <a href="https://github.com/libre-cord/librecord">Librecord</a>!</footer><script src="/assets/meowcord-credit.js"></script></body>`,
         );
 
 export const escapeTitle = (name: string) => name.replace(/[<>&"]/g, (c) => `&#${c.charCodeAt(0)};`);

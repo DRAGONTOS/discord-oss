@@ -35,8 +35,8 @@ test("switching points kettu at the new instance's bundle and reloads", async ()
     let reloaded = 0;
     globalThis.__PYON_LOADER__ = { loaderName: "Kettu" };
     globalThis.fetch = async (url, init) => {
-        if (url === "https://new.example/.well-known/discord-oss")
-            return { ok: true, status: 200, json: async () => ({ software: { name: "discord-oss" }, instance: { url: "https://new.example", name: "New" } }) };
+        if (url === "https://new.example/.well-known/librecord")
+            return { ok: true, status: 200, json: async () => ({ software: { name: "librecord" }, instance: { url: "https://new.example", name: "New" } }) };
         if (url === "https://new.example/mobile/meowcord.js" && init?.method === "HEAD") return { ok: true, status: 200 };
         return { ok: false, status: 404, json: async () => null };
     };
@@ -44,7 +44,7 @@ test("switching points kettu at the new instance's bundle and reloads", async ()
     const react = { createElement: () => null, useState: (value) => [value, () => {}], useEffect: () => {} };
     const switcher = createInstanceSwitcher({ currentOrigin: "https://old.example", nativeModule: (name) => modules[name] ?? null, log: () => {} });
     switcher.inspect(react);
-    assert.equal(typeof globalThis.DiscordOSS.openInstanceSwitcher, "function");
+    assert.equal(typeof globalThis.Librecord.openInstanceSwitcher, "function");
     const registry = {
         registered: null,
         registerComponent(key, provider) {
@@ -63,12 +63,12 @@ test("switching points kettu at the new instance's bundle and reloads", async ()
         customLoadUrl: { enabled: true, url: "https://new.example/mobile/meowcord.js" },
     });
     assert.deepEqual(
-        JSON.parse(fs.files.get("/data/files/discord-oss/instances.json")).map((item) => item.url),
+        JSON.parse(fs.files.get("/data/files/librecord/instances.json")).map((item) => item.url),
         ["https://new.example", "https://old.example"],
     );
     assert.deepEqual(fs.removed, ["cache:pyoncord/bundle.js"]);
     assert.equal(reloaded, 1);
 
-    await assert.rejects(switcher.discover("plain.example"), /isn't a Discord OSS instance/);
+    await assert.rejects(switcher.discover("plain.example"), /isn't a Librecord instance/);
     delete globalThis.__PYON_LOADER__;
 });

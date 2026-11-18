@@ -68,7 +68,7 @@ let lastActivity = "";
 let lastStart: { key: string; start: number } | null = null;
 let renderId = 0;
 
-const bridge = (): MusicBridge | undefined => (window as unknown as { DiscordOSS?: { music?: MusicBridge } }).DiscordOSS?.music;
+const bridge = (): MusicBridge | undefined => (window as unknown as { Librecord?: { music?: MusicBridge } }).Librecord?.music;
 
 function rewatch(): void {
     bridge()?.watch({ spotify: settings.store.spotify });

@@ -23,9 +23,9 @@ export interface SpacebarWellKnownClientResponse {
     };
 }
 
-export interface DiscordOssWellKnownResponse {
+export interface LibrecordWellKnownResponse {
     software: {
-        name: "discord-oss";
+        name: "librecord";
         version: string;
     };
     protocol: number;
