@@ -21,6 +21,7 @@ const FORMAT_MIME: Record<ImageFormat, string> = { gif: "image/gif", webp: "imag
 const MIME_FORMAT: Record<string, ImageFormat> = { "image/gif": "gif", "image/webp": "webp", "image/png": "png", "image/jpeg": "jpeg", "image/avif": "avif" };
 const RENDERABLE_MIME_TYPES = new Set(["image/gif", "image/webp", "image/png", "image/apng", "image/jpeg", "image/avif"]);
 const ANIMATABLE_FORMATS = new Set<ImageFormat>(["gif", "webp"]);
+export { RENDERABLE_MIME_TYPES, ANIMATABLE_FORMATS };
 const SEQUENCE_DECODABLE_MIME_TYPES = new Set(["image/gif", "image/webp"]);
 
 const queryString = (value: unknown) => (typeof value === "string" ? value : Array.isArray(value) && typeof value[0] === "string" ? value[0] : undefined);
