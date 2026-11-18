@@ -51,6 +51,4 @@ Clicking the game's name in an activity card opens its game profile, and so does
 
 ## Checking it
 
-`scripts/tests/game-detection.test.cjs` checks the matcher with process lists from each system: app bundles and helpers, `java` with Minecraft's arguments, path suffixes on Windows, Wine command lines, Steam folders, user-added games and candidates.
-
 `PORT=<port> bun scripts/dev/game-activity-probe.mjs` opens two accounts from `scripts/dev/.test-account` in headless Chromium. The first page gets a simulated `window.Librecord.games` that reports Minecraft as running. The probe checks the presence update, the second account's member list, profile popout and icon, the game profile, the Activity Privacy switch and adding a game under Registered Games. `SHOTS=<folder>` saves screenshots and `GAME_PROFILE=0` skips the game profile. It takes about 50 seconds, so run it through `scripts/dev/outside-app.sh` from the Claude desktop app.
