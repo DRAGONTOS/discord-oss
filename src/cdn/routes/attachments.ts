@@ -309,12 +309,7 @@ router.delete("/:channel_id/:batch_id/:attachment_id/:filename", async (req: Req
     const path = `attachments/${channel_id}/${batch_id}/${attachment_id}/${filename}`;
 
     const att = await CloudAttachment.findOne({
-        where: {
-            uploadFilename: `${channel_id}/${batch_id}/${attachment_id}/${filename}`,
-            channelId: channel_id,
-            userAttachmentId: attachment_id,
-            userFilename: filename,
-        },
+        where: { uploadFilename: `${channel_id}/${batch_id}/${attachment_id}/${filename}` },
     });
 
     if (att) {
@@ -323,7 +318,7 @@ router.delete("/:channel_id/:batch_id/:attachment_id/:filename", async (req: Req
         await storage.delete(path);
         return res.send({ success: true });
     }
-    return res.status(404).send("Attachment not found");
+    return res.status(404).json({ message: "Attachment not found" });
 });
 
 router.post("/:channel_id/:batch_id/:attachment_id/:filename/clone_to_message/:message_id", async (req: Request, res: Response) => {
