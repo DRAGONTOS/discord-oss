@@ -56,7 +56,7 @@ test("registration says whether it is open and what a signup needs", () => {
 
 test("the response names the software and both protocol versions", () => {
     const discovery = buildInstanceDiscovery(input(new ConfigValue()));
-    assert.deepEqual(discovery.software, { name: "discord-oss", version: "1.2.3" });
+    assert.deepEqual(discovery.software, { name: "librecord", version: "1.2.3" });
     assert.equal(discovery.protocol, 1);
     assert.equal(discovery.e2ee.protocol, 1);
     assert.ok(discovery.voice.regions.some((region) => region.default));

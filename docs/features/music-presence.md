@@ -49,7 +49,7 @@ FosscordMusicPresence polls this every 15 seconds while the account has a Last.f
 
 ## The desktop app
 
-The [desktop app](desktop.md) reads what plays in the Spotify app and hands it to the FosscordMusicPresence plugin through `window.DiscordOSS.music`. It only reads while the plugin asks for Spotify, so with that setting off it runs nothing.
+The [desktop app](desktop.md) reads what plays in the Spotify app and hands it to the FosscordMusicPresence plugin through `window.Librecord.music`. It only reads while the plugin asks for Spotify, so with that setting off it runs nothing.
 
 - macOS: every 5 seconds the app checks for a process named Spotify with `pgrep`, and only then asks Spotify for its state with `osascript`. The first time, macOS asks whether the app may control Spotify. If that is denied, the app stops asking until it restarts.
 - Windows: one hidden PowerShell process reads the system media sessions every 3 seconds and reports sessions whose app id contains Spotify. It exits when the app does. Windows doesn't expose the track link or an artwork URL, so this activity has no album art and no button.

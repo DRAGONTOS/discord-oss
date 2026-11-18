@@ -33,7 +33,7 @@ const active = new Set<string>();
 let unsubscribe: (() => void) | null = null;
 let sequence = 0;
 
-const bridge = (): RpcBridge | undefined => (window as unknown as { DiscordOSS?: { rpc?: RpcBridge } }).DiscordOSS?.rpc;
+const bridge = (): RpcBridge | undefined => (window as unknown as { Librecord?: { rpc?: RpcBridge } }).Librecord?.rpc;
 
 async function resolveImage(applicationId: string | undefined, image: string | undefined): Promise<string | undefined> {
     if (!image || !applicationId || PASSTHROUGH.test(image)) return image;

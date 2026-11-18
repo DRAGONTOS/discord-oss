@@ -1,6 +1,6 @@
 # Discord's Android client
 
-This page covers what Discord's React Native Android app does on the wire that the web client doesn't, what the server answers today, and how the Discord OSS mobile bundle points the app at an instance. The wire details come from [docs.discord.food](https://docs.discord.food), the [Discord developer docs](https://discord.com/developers/docs), `scripts/dev/android-gateway-probe.mjs` and a run of Discord 349.9 Stable patched by KettuManager 1.2.2 in an Android 15 emulator on 2026-10-17. No APK or Discord code is in the repository.
+This page covers what Discord's React Native Android app does on the wire that the web client doesn't, what the server answers today, and how the Librecord mobile bundle points the app at an instance. The wire details come from [docs.discord.food](https://docs.discord.food), the [Discord developer docs](https://discord.com/developers/docs), `scripts/dev/android-gateway-probe.mjs` and a run of Discord 349.9 Stable patched by KettuManager 1.2.2 in an Android 15 emulator on 2026-10-17. No APK or Discord code is in the repository.
 
 ## How the app would reach an instance
 
@@ -33,12 +33,12 @@ A string argument is rewritten wherever one of the four hosts appears in it, not
 
 ### Switching instances
 
-The bundle adds an instance switcher to the app, in `client/mobile/src/switcher.ts`. While nobody is signed in, a bar at the bottom of the screen shows the current instance and a Change button. `globalThis.DiscordOSS.openInstanceSwitcher()` opens it from a debugger too.
+The bundle adds an instance switcher to the app, in `client/mobile/src/switcher.ts`. While nobody is signed in, a bar at the bottom of the screen shows the current instance and a Change button. `globalThis.Librecord.openInstanceSwitcher()` opens it from a debugger too.
 
-The switcher lists the instances used before, with the current one marked, and has a field to add one. A new address is checked through `/.well-known/discord-oss`, must use HTTPS because Discord's app refuses cleartext, and must serve `/mobile/meowcord.js`. Choosing an instance:
+The switcher lists the instances used before, with the current one marked, and has a field to add one. A new address is checked through `/.well-known/librecord`, must use HTTPS because Discord's app refuses cleartext, and must serve `/mobile/meowcord.js`. Choosing an instance:
 
 1. writes `customLoadUrl` in the loader's config to `https://<instance>/mobile/meowcord.js`, keeping its other settings. Kettu keeps it in `pyoncord/loader.json` in the app's documents folder, Rain in `rain/loader.json` and Vendetta loaders in `vendetta_loader.json`,
-2. saves the list in `discord-oss/instances.json` with the chosen instance first,
+2. saves the list in `librecord/instances.json` with the chosen instance first,
 3. deletes Kettu's cached `pyoncord/bundle.js` so the old instance's bundle can't load from the cache,
 4. reloads the app through `BundleUpdaterManager.reload()`. When that isn't there, it asks to close and reopen the app.
 

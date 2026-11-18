@@ -45,7 +45,7 @@
 | [invite-roles.md](features/invite-roles.md) | Invites that give roles to the people who join through them. |
 | [status.md](features/status.md) | The public status page, component groups, uptime history and the API response time chart. |
 | [phones.md](features/phones.md) | The client on phones, installing it to the home screen, and Discord's Android app. |
-| [desktop.md](features/desktop.md) | The Discord OSS desktop and Android apps, their instance switcher, and building the installers and APK. |
+| [desktop.md](features/desktop.md) | The Librecord desktop and Android apps, their instance switcher, and building the installers and APK. |
 
 ## Development
 
@@ -62,6 +62,6 @@ Read [CONTRIBUTING.MD](../CONTRIBUTING.MD) first.
 | [native-ui.md](development/native-ui.md) | Shared native UI adapters for plugins. |
 | [dialog-dismissal.md](development/dialog-dismissal.md) | How owned dialogs and the developer portal dismiss. |
 | [admin-api-coverage.md](development/admin-api-coverage.md) | Which API operations the admin dashboard covers. |
-| [instance-discovery.md](development/instance-discovery.md) | `/.well-known/discord-oss`, which tells clients an instance's name, icon, endpoints and signup rules. |
+| [instance-discovery.md](development/instance-discovery.md) | `/.well-known/librecord`, which tells clients an instance's name, icon, endpoints and signup rules. |
 | [e2ee-protocol.md](development/e2ee-protocol.md) | The encryption protocol byte by byte, for writing another client. |
 | [native-voice.md](development/native-voice.md) | Native UDP voice and video for the official Discord desktop apps, `NATIVE_VOICE`, and the headless native client used to test it. |

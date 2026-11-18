@@ -11,7 +11,7 @@ router.get(
         spacebarOnly: true,
         authentication: "never",
         description: "Describe this instance for clients that connect to it: its name and icon, its API, gateway, CDN and voice endpoints, and how to register",
-        responses: { 200: { body: "DiscordOssWellKnownResponse" } },
+        responses: { 200: { body: "LibrecordWellKnownResponse" } },
     }),
     (req: Request, res: Response) => {
         const endpoint = capEndpoint();

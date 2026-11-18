@@ -1,10 +1,10 @@
 # Getting listed
 
-`instances.json` lists public Discord OSS instances, and `instances.md` is generated from it. This page lists what we check before we merge a pull request that adds an instance.
+`instances.json` lists public Librecord instances, and `instances.md` is generated from it. This page lists what we check before we merge a pull request that adds an instance.
 
 ## Requirements
 
-- A recent Discord OSS version over HTTPS, with registration captchas and pride flags on and nothing behind a paywall.
+- A recent Librecord version over HTTPS, with registration captchas and pride flags on and nothing behind a paywall.
 - Active moderation, and a way for the project's moderators to reach you. Put your Discord username in your pull request.
 - A public Terms of Service that bans:
   - sexual content of any kind, including pornography and non-consensual intimate media such as sharing or threatening to share private sexual images, AI-generated or deepfake ones included.
@@ -24,6 +24,6 @@ Add your instance to `instances.json` in a pull request, as [CONTRIBUTING.MD](..
 
 ## Staying listed
 
-- Keep updating Discord OSS.
+- Keep updating Librecord.
 - Act on reports, or the maintainers remove your entry.
 - If your instance moves to a new address, follow [change-url.md](change-url.md).

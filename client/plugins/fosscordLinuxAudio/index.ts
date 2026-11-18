@@ -15,7 +15,7 @@ export default definePlugin({
 
     start() {
         const devices = navigator.mediaDevices;
-        const bridge = (window as unknown as { DiscordOSS?: { linuxAudio?: unknown } }).DiscordOSS?.linuxAudio;
+        const bridge = (window as unknown as { Librecord?: { linuxAudio?: unknown } }).Librecord?.linuxAudio;
         if (!devices?.getDisplayMedia || !bridge) return;
         const previous: GetDisplayMedia = devices.getDisplayMedia;
         const wrapped: GetDisplayMedia = async (...args: Parameters<GetDisplayMedia>) => {

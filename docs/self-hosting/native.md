@@ -51,7 +51,7 @@ Use a password from `openssl rand -hex 24`. If the last command fails, add `host
 Build as your normal user, in a separate checkout:
 
 ```sh
-git clone https://github.com/meowcorded/meowcord.git meowcord-build
+git clone https://github.com/libre-cord/librecord.git meowcord-build
 cd meowcord-build
 bun install --frozen-lockfile
 bun run build:src
@@ -117,7 +117,7 @@ Save this as `/etc/systemd/system/meowcord.service`:
 
 ```ini
 [Unit]
-Description=Discord OSS server
+Description=Librecord server
 Wants=network-online.target
 After=network-online.target postgresql.service
 Requires=postgresql.service

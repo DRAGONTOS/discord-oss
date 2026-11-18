@@ -2,7 +2,7 @@
 
 **agent contributions are allowed during the alpha.** Use a frontier model such as Opus 5.5, say so in the pull request description, and test your change for bugs and vulnerabilities.
 
-Discord OSS isn't ready for general use. Don't host a public instance unless it is labelled unstable and unofficial.
+Librecord isn't ready for general use. Don't host a public instance unless it is labelled unstable and unofficial.
 
 ## What we won't merge
 
@@ -66,11 +66,11 @@ To use SQLite instead of PostgreSQL, see [setup.md](docs/self-hosting/setup.md#s
 
 ## Configuration
 
-`CONFIG_PATH` points the server at a JSON file. The server fills in every missing key with its default and writes the file back. Without `CONFIG_PATH`, the configuration lives in the database. The admin dashboard edits the same values. These keys are specific to Discord OSS:
+`CONFIG_PATH` points the server at a JSON file. The server fills in every missing key with its default and writes the file back. Without `CONFIG_PATH`, the configuration lives in the database. The admin dashboard edits the same values. These keys are specific to Librecord:
 
 | Key | What it controls |
 | --- | --- |
-| `client.instanceName` | The name that replaces Discord in the client. `Discord OSS` by default. |
+| `client.instanceName` | The name that replaces Discord in the client. `Librecord` by default. |
 | `client.icon`, `client.logo` | Square icon and wordmark, as a URL or a path relative to the repository root. The icon falls back to `general.image`, then `assets/icon.png`. |
 | `client.helpUrl` | Where help links go. Without it the help button is hidden. |
 | `client.experiments` | Client experiment names mapped to the variant to assign. |

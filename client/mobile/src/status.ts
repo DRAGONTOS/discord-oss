@@ -1,14 +1,14 @@
 type AnyRecord = Record<PropertyKey, any>;
 type Component = (props: AnyRecord, ...rest: unknown[]) => unknown;
 
-// Discord OSS adds a "testing" status (client/plugins/fosscordTestingStatus): a blue dot that mutes notifications like
+// Librecord adds a "testing" status (client/plugins/fosscordTestingStatus): a blue dot that mutes notifications like
 // Do Not Disturb. Discord's mobile apps draw a status with the `Status` component, which picks a coloured icon image
 // per status (online, idle, dnd, streaming, offline) and draws nothing it doesn't know. For "testing" the bundle draws
 // the online icon, which also takes the phone and headset shapes, tinted the plugin's blue, and names it "Testing".
 export const TESTING = "testing";
 export const TESTING_COLOR = "#3ba3e8";
 export const TESTING_LABEL = "Testing";
-const PATCHED = Symbol.for("discordOss.testingStatus");
+const PATCHED = Symbol.for("librecord.testingStatus");
 
 const isElement = (value: unknown): value is AnyRecord => !!value && typeof value === "object" && "props" in value && "type" in value;
 
@@ -29,7 +29,7 @@ const mark = <T extends object>(value: T) => {
 };
 
 const wrapStatus = (Status: Component) =>
-    mark(function Status_discordOss(this: unknown, props: AnyRecord, ...rest: unknown[]) {
+    mark(function Status_librecord(this: unknown, props: AnyRecord, ...rest: unknown[]) {
         if (props?.status !== TESTING) return Status.call(this, props, ...rest);
         return tintImages(Status.call(this, { ...props, status: "online" }, ...rest), TESTING_COLOR);
     });

@@ -72,7 +72,7 @@ Sign in again and open `/admin`. `revoke` removes the right, and other rights st
 
 ## Configuration file
 
-The server and the admin dashboard share `/data/state/config.json` in the `state` volume. Before every start, `scripts/docker-configure.js` writes the public URLs, the voice endpoint `<DOMAIN>/voice`, the trusted proxies and, when their variables are set, the instance name, Cap and SMTP. Unsetting `CAP_*` or `SMTP_*` later leaves the old values, so change those in the dashboard. [CONTRIBUTING.MD](../../CONTRIBUTING.MD#configuration) lists the keys specific to Discord OSS. To edit the file by hand:
+The server and the admin dashboard share `/data/state/config.json` in the `state` volume. Before every start, `scripts/docker-configure.js` writes the public URLs, the voice endpoint `<DOMAIN>/voice`, the trusted proxies and, when their variables are set, the instance name, Cap and SMTP. Unsetting `CAP_*` or `SMTP_*` later leaves the old values, so change those in the dashboard. [CONTRIBUTING.MD](../../CONTRIBUTING.MD#configuration) lists the keys specific to Librecord. To edit the file by hand:
 
 ```sh
 state_volume=$(bun scripts/ops/compose-resource.mjs state)
@@ -173,7 +173,7 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 ```ini
 # /etc/systemd/system/meowcord-update.service
 [Unit]
-Description=Discord OSS auto-update
+Description=Librecord auto-update
 After=docker.service network-online.target
 
 [Service]
@@ -184,7 +184,7 @@ ExecStart=/usr/bin/bash /srv/meowcord/scripts/auto-update.sh
 
 # /etc/systemd/system/meowcord-update.timer
 [Unit]
-Description=Check for Discord OSS updates every 30 seconds
+Description=Check for Librecord updates every 30 seconds
 
 [Timer]
 OnBootSec=2min
@@ -206,7 +206,7 @@ To start the update the moment GitHub reports a push instead, run `scripts/ops/u
 ```ini
 # /etc/systemd/system/meowcord-update-webhook.service
 [Unit]
-Description=Discord OSS update webhook
+Description=Librecord update webhook
 After=docker.service network-online.target
 
 [Service]

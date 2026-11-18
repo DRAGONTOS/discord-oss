@@ -8,7 +8,7 @@ interface LinuxAudioBridge {
     stop(): void;
 }
 
-const bridge = (): LinuxAudioBridge | undefined => (window as unknown as { DiscordOSS?: { linuxAudio?: LinuxAudioBridge } }).DiscordOSS?.linuxAudio;
+const bridge = (): LinuxAudioBridge | undefined => (window as unknown as { Librecord?: { linuxAudio?: LinuxAudioBridge } }).Librecord?.linuxAudio;
 
 async function findDevice(): Promise<MediaDeviceInfo | undefined> {
     for (let attempt = 0; attempt < 15; attempt++) {

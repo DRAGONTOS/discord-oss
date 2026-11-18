@@ -1,12 +1,12 @@
 # Instance discovery
 
-`GET /.well-known/discord-oss` describes an instance to a client that connects to it, such as a native client with an instance switcher. It needs no login, answers with `Access-Control-Allow-Origin: *`, can be cached for 5 minutes and shares the `/.well-known` rate limit of 60 requests per 30 seconds per IP address.
+`GET /.well-known/librecord` describes an instance to a client that connects to it, such as a native client with an instance switcher. It needs no login, answers with `Access-Control-Allow-Origin: *`, can be cached for 5 minutes and shares the `/.well-known` rate limit of 60 requests per 30 seconds per IP address.
 
-A client that is given a domain fetches `https://<domain>/.well-known/discord-oss`, checks that `software.name` is `discord-oss` and that it supports `protocol`, then uses the URLs in the response instead of building its own. All URLs are absolute.
+A client that is given a domain fetches `https://<domain>/.well-known/librecord`, checks that `software.name` is `librecord` and that it supports `protocol`, then uses the URLs in the response instead of building its own. All URLs are absolute.
 
 ```json
 {
-    "software": { "name": "discord-oss", "version": "0.1.0-alpha.1" },
+    "software": { "name": "librecord", "version": "0.1.0-alpha.1" },
     "protocol": 1,
     "instance": {
         "id": "1570103005980680252",

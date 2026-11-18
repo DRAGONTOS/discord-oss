@@ -1,4 +1,4 @@
-export const DEFAULT_INSTANCE_NAME = "Discord OSS";
+export const DEFAULT_INSTANCE_NAME = "Librecord";
 
 export class ClientConfiguration {
     useTestClient: boolean = true;

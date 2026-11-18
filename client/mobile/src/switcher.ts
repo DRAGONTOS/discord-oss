@@ -11,7 +11,7 @@ type SwitcherOptions = {
 
 type Loader = { configPath: string; cachedBundle: string | null };
 
-const INSTANCES_FILE = "discord-oss/instances.json";
+const INSTANCES_FILE = "librecord/instances.json";
 const LOCAL_HOST = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|[^.]+\.local)(:\d+)?$/i;
 const BLURPLE = "#5865f2";
 const BACKGROUND = "#1a1a1e";
@@ -31,7 +31,7 @@ export const hostOf = (origin: string) => origin.replace(/^https?:\/\//, "");
 
 export const normalizeInstanceInput = (input: string) => {
     const text = input.trim().replace(/\/+$/, "");
-    if (!text) throw new Error("Enter the address of a Discord OSS instance.");
+    if (!text) throw new Error("Enter the address of a Librecord instance.");
     const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `${LOCAL_HOST.test(text.split("/")[0]) ? "http" : "https"}://${text}`;
     const origin = originOf(withScheme);
     if (!origin) throw new Error("Only http and https addresses work.");
@@ -97,13 +97,13 @@ export const createInstanceSwitcher = (options: SwitcherOptions) => {
         const host = hostOf(origin);
         let response: Response;
         try {
-            response = await fetch(`${origin}/.well-known/discord-oss`, { headers: { accept: "application/json" } });
+            response = await fetch(`${origin}/.well-known/librecord`, { headers: { accept: "application/json" } });
         } catch {
             throw new Error(`Couldn't reach ${host}. Check the address and your connection.`);
         }
-        if (!response.ok) throw new Error(`${host} isn't a Discord OSS instance (HTTP ${response.status}).`);
+        if (!response.ok) throw new Error(`${host} isn't a Librecord instance (HTTP ${response.status}).`);
         const body = (await response.json().catch(() => null)) as { software?: { name?: string }; instance?: { url?: string; name?: string } } | null;
-        if (body?.software?.name !== "discord-oss") throw new Error(`${host} isn't a Discord OSS instance.`);
+        if (body?.software?.name !== "librecord") throw new Error(`${host} isn't a Librecord instance.`);
         const url = (body.instance?.url && originOf(body.instance.url)) || origin;
         if (!/^https:/.test(url)) throw new Error(`${hostOf(url)} doesn't use HTTPS. Discord's app only connects to instances with a trusted HTTPS certificate.`);
         const bundle = await fetch(`${url}/mobile/meowcord.js`, { method: "HEAD" }).catch(() => null);
@@ -306,7 +306,7 @@ export const createInstanceSwitcher = (options: SwitcherOptions) => {
                 R.createElement(
                     RN.Text,
                     { style: { color: MUTED, fontSize: 14, marginTop: 6, marginBottom: 20 } },
-                    "Pick a Discord OSS instance. The app restarts on the one you choose, and you sign in to it with that instance's account.",
+                    "Pick a Librecord instance. The app restarts on the one you choose, and you sign in to it with that instance's account.",
                 ),
                 ...rows,
                 R.createElement(RN.Text, { style: { color: MUTED, fontSize: 12, fontWeight: "700", marginTop: 20, marginBottom: 8 } }, "ADD AN INSTANCE"),
@@ -360,7 +360,7 @@ export const createInstanceSwitcher = (options: SwitcherOptions) => {
         dispatcher.subscribe("LOGIN_SUCCESS", () => setLoggedIn(true));
     };
 
-    g.DiscordOSS = { ...(g.DiscordOSS ?? {}), openInstanceSwitcher: open, currentInstance: options.currentOrigin };
+    g.Librecord = { ...(g.Librecord ?? {}), openInstanceSwitcher: open, currentInstance: options.currentOrigin };
 
     return {
         open,
