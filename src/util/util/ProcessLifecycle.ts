@@ -19,6 +19,9 @@ export class ProcessLifecycle {
     private static finalizing?: Promise<void>;
     private static readonly finalizer = new AsyncLocalStorage<boolean>();
     static eventEmitter: EventEmitter<ProcessLifecycleEvents> = new EventEmitter();
+    static {
+        ProcessLifecycle.eventEmitter.setMaxListeners(32);
+    }
 
     static requestShutdown() {
         if (this.shutdownRequested) return;
