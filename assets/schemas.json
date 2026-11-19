@@ -2580,6 +2580,9 @@
             "premium_progress_bar_enabled": {
                 "type": "boolean"
             },
+            "restrict_attachments": {
+                "type": "boolean"
+            },
             "discovery_splash": {
                 "type": [
                     "null",
@@ -3538,6 +3541,9 @@
             "premium_progress_bar_enabled": {
                 "type": "boolean"
             },
+            "restrict_attachments": {
+                "type": "boolean"
+            },
             "discovery_splash": {
                 "type": [
                     "null",
@@ -4432,6 +4438,9 @@
             "premium_progress_bar_enabled": {
                 "type": "boolean"
             },
+            "restrict_attachments": {
+                "type": "boolean"
+            },
             "discovery_splash": {
                 "type": "string"
             },
@@ -4710,6 +4719,7 @@
             "nsfw",
             "premium_progress_bar_enabled",
             "public_updates_channel_id",
+            "restrict_attachments",
             "roles",
             "stickers",
             "toDiscoverableGuild",
@@ -5079,6 +5089,9 @@
                 "type": "string"
             },
             "premium_progress_bar_enabled": {
+                "type": "boolean"
+            },
+            "restrict_attachments": {
                 "type": "boolean"
             },
             "discovery_splash": {
@@ -20692,6 +20705,10 @@
                 "type": "boolean",
                 "default": false
             },
+            "restrict_attachments": {
+                "type": "boolean",
+                "default": false
+            },
             "vanity_url_code": {
                 "type": [
                     "null",
@@ -20816,6 +20833,7 @@
             "nsfw",
             "premium_progress_bar_enabled",
             "public_updates_channel_id",
+            "restrict_attachments",
             "roles",
             "stickers",
             "template",

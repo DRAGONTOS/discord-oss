@@ -61,6 +61,7 @@ export interface IReadyGuildDTO {
         max_members: number | undefined;
         nsfw_level: number | undefined;
         hub_type?: unknown | null; // ????
+        restrict_attachments: boolean;
 
         home_header: string | null;
         latest_onboarding_question_id: null; // TODO
@@ -151,6 +152,7 @@ export class ReadyGuildDTO implements IReadyGuildDTO {
         max_members: number | undefined;
         nsfw_level: number | undefined;
         hub_type?: unknown | null; // ????
+        restrict_attachments: boolean;
 
         home_header: string | null;
         latest_onboarding_question_id: null; // TODO
@@ -223,6 +225,7 @@ export class ReadyGuildDTO implements IReadyGuildDTO {
             max_members: guild.max_members,
             nsfw_level: guild.nsfw_level,
             hub_type: null,
+            restrict_attachments: guild.restrict_attachments,
 
             home_header: guild.home_header ?? null,
             id: guild.id,

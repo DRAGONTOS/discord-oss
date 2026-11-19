@@ -28,6 +28,7 @@
 | [channel-pinning.md](features/channel-pinning.md) | Pinning channels to the top of your own channel list in any server. |
 | [link-embeds.md](features/link-embeds.md) | Link previews and embedded media. |
 | [markdown-attachments.md](features/markdown-attachments.md) | The preview of Markdown file attachments and the LaTeX math it typesets. |
+| [attachment-access.md](features/attachment-access.md) | The per-server toggle that stops attachment links from working outside the instance. |
 | [activities.md](features/activities.md) | Embedded activities. |
 | [music-presence.md](features/music-presence.md) | Spotify and Last.fm Listening activities, the Spotify and Last.fm connections, the desktop app's Spotify reader and external activity images. |
 | [game-activity.md](features/game-activity.md) | Game detection in the desktop app, Playing activities, Registered Games and game profiles. |

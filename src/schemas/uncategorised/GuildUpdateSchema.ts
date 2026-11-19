@@ -42,6 +42,7 @@ export interface GuildUpdateSchema extends Omit<GuildCreateSchema, "channels" | 
      */
     preferred_locale?: string;
     premium_progress_bar_enabled?: boolean;
+    restrict_attachments?: boolean;
     discovery_splash?: string | null;
     home_header?: string | null;
     /**

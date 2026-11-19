@@ -119,6 +119,7 @@ router.patch(
             "premium_progress_bar_enabled",
             "widget_enabled",
             "widget_channel_id",
+            "restrict_attachments",
             "nsfw_level",
         ];
         const auditBefore = Object.fromEntries(auditKeys.map((key) => [key, (guild as unknown as Record<string, unknown>)[key]]));

@@ -6,7 +6,7 @@ import multerConfig from "multer";
 import { fileTypeFromBuffer } from "file-type";
 import imageSize from "image-size";
 import { HTTPError } from "lambert-server/HTTPError";
-import { Attachment, CloudAttachment, getDatabase } from "@spacebar/database";
+import { Attachment, CloudAttachment, attachmentRequiresMembership, getDatabase, isGuildAttachmentMember } from "@spacebar/database";
 import {
     Config,
     extractVideoFrame,
@@ -100,17 +100,32 @@ router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req:
     if (req.headers.signature) {
         hasValidAuth = isRequestSignature(req.headers.signature);
         if (!hasValidAuth) console.warn("[CDN/Attachments] Client sent invalid signature header");
-    } else if (!Config.get().security.cdnSignUrls) {
-        hasValidAuth = true;
     } else {
-        hasValidAuth = hasValidSignature(
-            new NewUrlUserSignatureData({
-                ip: req.ip,
-                userAgent: req.headers["user-agent"] as string,
-            }),
-            UrlSignResult.fromUrl(fullUrl),
-        );
-        if (!hasValidAuth) console.warn("[CDN/Attachments] Client sent invalid attachment URL signature");
+        const restrictedGuildId = await attachmentRequiresMembership(channel_id);
+        if (restrictedGuildId) {
+            hasValidAuth =
+                (Config.get().security.cdnSignUrls &&
+                    hasValidSignature(
+                        new NewUrlUserSignatureData({
+                            ip: req.ip,
+                            userAgent: req.headers["user-agent"] as string,
+                        }),
+                        UrlSignResult.fromUrl(fullUrl),
+                    )) ||
+                (await isGuildAttachmentMember(restrictedGuildId, req.user_id));
+            if (!hasValidAuth) console.warn("[CDN/Attachments] Attachment link sharing is restricted for this server");
+        } else if (!Config.get().security.cdnSignUrls) {
+            hasValidAuth = true;
+        } else {
+            hasValidAuth = hasValidSignature(
+                new NewUrlUserSignatureData({
+                    ip: req.ip,
+                    userAgent: req.headers["user-agent"] as string,
+                }),
+                UrlSignResult.fromUrl(fullUrl),
+            );
+            if (!hasValidAuth) console.warn("[CDN/Attachments] Client sent invalid attachment URL signature");
+        }
     }
 
     if (!hasValidAuth) return res.status(404).send("This content is no longer available.");

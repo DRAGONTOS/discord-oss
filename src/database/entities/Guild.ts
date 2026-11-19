@@ -378,6 +378,9 @@ export class Guild extends BaseClass {
     @Column({ default: false })
     discovery_excluded: boolean = false;
 
+    @Column({ default: false })
+    restrict_attachments: boolean = false;
+
     @Column({ type: String, nullable: true })
     vanity_url_code?: string | null;
 
