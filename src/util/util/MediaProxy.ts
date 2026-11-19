@@ -51,15 +51,6 @@ export const guessMediaType = (url?: string) => {
     return extension ? mediaTypes[extension] : undefined;
 };
 
-export const corsProxyUrl = (url: URL) => {
-    if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Unsupported media protocol");
-    if (url.username || url.password) throw new Error("Media URL credentials are not allowed");
-    if (url.origin === "https://cors.estrogen.delivery") return url.href;
-    const target = new URL(url);
-    target.hash = "";
-    return `https://cors.estrogen.delivery/?url=${encodeURIComponent(target.href)}`;
-};
-
 export const isLocalMediaUrl = (url: string) => {
     if (url.startsWith("/") && !url.startsWith("//")) return true;
     const base = cdnBase();

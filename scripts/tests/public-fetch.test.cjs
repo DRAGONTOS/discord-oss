@@ -309,7 +309,6 @@ test("embed image probes consume bounded downloaded streams and preserve disable
             Config: { get: () => settings },
             getDefaultFetchOptions: () => ({}),
             isLocalMediaUrl: (url) => new URL(url).origin === settings.cdn.endpointPublic,
-            corsProxyUrl: (url) => `https://cors.estrogen.delivery/?url=${encodeURIComponent(url.href)}`,
             externalProxyUrl: (url) => url.href,
             isTrustedCdnAsset: (url, origin) => url.origin === origin && url.pathname === "/stickers/123.png",
             fetchPublicUrl: async (url, options, redirects, limits) => {
@@ -329,7 +328,7 @@ test("embed image probes consume bounded downloaded streams and preserve disable
     settings.limits.message.maxEmbedDownloadSize = 1024 ** 3;
     await module.exports.fetchEmbedUrl("https://other.example/image");
     assert.equal(calls[1].limits.maxBytes, 32 * 1024 * 1024);
-    assert.equal(new URL(calls[1].url).searchParams.get("url"), "https://other.example/image");
+    assert.equal(calls[1].url, "https://other.example/image");
     assert.equal(calls[1].redirects, 0);
     assert.throws(() => module.exports.fetchEmbedUrl("http://cdn.example/e2ee/private?token=secret"), /Unsupported instance/);
     assert.equal(module.exports.getProxyUrl(new URL("http://cdn.example/e2ee/private?token=secret"), 10, 10), "http://cdn.example/e2ee/private?token=secret");

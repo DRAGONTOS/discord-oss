@@ -29,7 +29,7 @@ vm.runInNewContext(
                   : require(name),
     },
 );
-const { proxyEmbedMedia, proxyComponentsMedia, corsProxyUrl, externalProxyUrl, verifyExternalPath } = moduleFixture.exports;
+const { proxyEmbedMedia, proxyComponentsMedia, externalProxyUrl, verifyExternalPath } = moduleFixture.exports;
 
 const crypto = require("node:crypto");
 const externalUrl = (href) => {
@@ -95,18 +95,4 @@ test("origin matching rejects CDN lookalikes and unsafe media schemes", () => {
     assert.equal(output.image.url, externalUrl("https://instance.test.evil.test/a.png"));
     assert.equal(output.thumbnail.url, undefined);
     assert.equal(proxyEmbedMedia({ image: { url: "https://instance.test/attachments/1/a.png" } }).image.url, "https://instance.test/attachments/1/a.png");
-});
-
-test("proxy URL encoding preserves queries, strips fragments and does not double proxy", () => {
-    const source = new URL("https://media.test/a.png?token=abc&size=2#fragment");
-    const result = corsProxyUrl(source);
-    assert.equal(new URL(result).searchParams.get("url"), "https://media.test/a.png?token=abc&size=2");
-    assert.equal(corsProxyUrl(new URL(result)), result);
-    assert.throws(() => corsProxyUrl(new URL("https://user:secret@media.test/a.png")));
-    assert.equal(
-        proxyEmbedMedia({
-            image: { url: source.href, proxy_url: "https://instance.test/external/legacy" },
-        }).image.url,
-        externalUrl(source.href),
-    );
 });

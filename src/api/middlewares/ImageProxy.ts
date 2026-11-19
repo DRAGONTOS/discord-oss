@@ -1,4 +1,4 @@
-import { Config, corsProxyUrl } from "@spacebar/util";
+import { Config } from "@spacebar/util";
 import { fetchPublicUrl } from "@spacebar/util/util/networking/PublicNetwork";
 import { Request, Response } from "express";
 import crypto from "node:crypto";
@@ -14,7 +14,7 @@ export async function ImageProxy(req: Request, res: Response) {
     if (active >= 4) return res.status(503).send("Media proxy is busy");
     active++;
     try {
-        const target = corsProxyUrl(new URL(`https://${path.slice(2).join("/")}`));
+        const target = new URL(`https://${path.slice(2).join("/")}`).href;
         const request = await fetchPublicUrl(
             target,
             {

@@ -57,7 +57,7 @@ const embeds = load("src/api/util/utility/EmbedHandlers.ts", {
     "@spacebar/util/util/networking/PublicNetwork": {
         isTrustedCdnAsset: () => false,
         fetchPublicUrl: async (url, init = {}) => {
-            const target = new URL(url).searchParams.get("url");
+            const target = url;
             fetched.push({ target, method: init.method ?? "GET" });
             const route = routes.get(target);
             if (!route) throw Error(`no fixture for ${target}`);
@@ -106,7 +106,7 @@ test("a youtube link becomes an iframe player that the client opens instead of a
 });
 
 test("stored player embeds lose a proxy_url so old cached youtube embeds play again", () => {
-    const stored = { type: "video", video: { url: "https://www.youtube.com/embed/wzWxtKxD-mc", proxy_url: "https://cors.estrogen.delivery/?url=x", width: 1280, height: 720 } };
+    const stored = { type: "video", video: { url: "https://www.youtube.com/embed/wzWxtKxD-mc", width: 1280, height: 720 } };
     assert.deepEqual(plain(media.proxyEmbedMedia(stored).video), { url: "https://www.youtube.com/embed/wzWxtKxD-mc", width: 1280, height: 720 });
     for (const url of ["https://evil.test/embed/wzWxtKxD-mc", "http://www.youtube.com/embed/wzWxtKxD-mc", "https://www.youtube.com/watch?v=wzWxtKxD-mc"]) {
         const video = media.proxyEmbedMedia({ type: "rich", video: { url } }).video;

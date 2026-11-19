@@ -8,7 +8,6 @@ import { sleep, arrayDistinctBy, arrayGroupBy, normalizeUrl } from "@spacebar/ex
 import {
     Config,
     emitEvent,
-    corsProxyUrl,
     externalProxyUrl,
     guessMediaType,
     isEmbedPlayerUrl,
@@ -41,7 +40,7 @@ const fetchEmbedUrl = (url: string | URL, options: RequestInit = {}) => {
     const target = new URL(url);
     const local = isTrustedCdnAsset(target, Config.get().cdn.endpointPublic ?? undefined);
     if (!local && isLocalMediaUrl(target.href)) throw new Error("Unsupported instance embed URL");
-    return fetchPublicUrl(local ? target.href : corsProxyUrl(target), options, 0, {
+    return fetchPublicUrl(target.href, options, 0, {
         maxBytes,
         timeoutMs: 15000,
         trustedCdnOrigin: Config.get().cdn.endpointPublic ?? undefined,

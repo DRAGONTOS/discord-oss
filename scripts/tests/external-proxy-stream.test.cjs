@@ -23,7 +23,6 @@ const run = async (upstream, verify) => {
                     ? {
                           Config: { get: () => ({ embeds: {}, cdn: { proxyCacheHeaderSeconds: 60 } }) },
                           verifyExternalPath: () => true,
-                          corsProxyUrl: (url) => `https://cors.estrogen.delivery/?url=${encodeURIComponent(url.href)}`,
                           fetchPublicUrl: async (url, options, redirects, limits) => {
                               calls.push({ url, options, redirects, limits });
                               return upstream(options, limits);
@@ -116,7 +115,6 @@ test("historical resizing uses bounded CORS downloads and limits decoder input a
                                   cdn: { proxyCacheHeaderSeconds: 60 },
                               }),
                           },
-                          corsProxyUrl: (url) => `https://cors.estrogen.delivery/?url=${encodeURIComponent(url.href)}`,
                       }
                     : name.includes("PublicNetwork")
                       ? {
@@ -172,7 +170,7 @@ test("historical resizing uses bounded CORS downloads and limits decoder input a
     assert.equal(maximum, 4);
     assert.equal(responses.filter((status) => status === 503).length, 4);
     assert.equal(responses.filter((status) => status === 200).length, 4);
-    assert.equal(new URL(calls[0].url).searchParams.get("url"), "https://source.test/image");
+    assert.equal(calls[0].url, "https://source.test/image");
     assert.equal(calls[0].redirects, 0);
     assert.equal(calls[0].limits.maxBytes, 10 * 1024 * 1024);
     const invalidPath = "999999x100/source.test/image";
