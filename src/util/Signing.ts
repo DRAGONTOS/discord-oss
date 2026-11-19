@@ -276,6 +276,14 @@ export const hasValidSignature = (req: NewUrlUserSignatureData, sig: UrlSignResu
     return isHashValid;
 };
 
+export const tryUrlSignature = (req: NewUrlUserSignatureData, url: string): boolean => {
+    try {
+        return hasValidSignature(req, UrlSignResult.fromUrl(url));
+    } catch {
+        return false;
+    }
+};
+
 // port of https://github.com/TheArcaneBrony/ArcaneLibs/blob/master/ArcaneLibs/Extensions/DictionaryExtensions.cs#L80
 function hexdump(arr: Int8Array, width: number = 32, colorize: boolean = true) {
     const colorizeFunc = colorize ? (val: number, str: string) => ConsoleUtils.ColoredString(str, ColorUtils.cnv8To24(val)) : (val: number, str: string) => str;

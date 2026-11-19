@@ -7,17 +7,7 @@ import { fileTypeFromBuffer } from "file-type";
 import imageSize from "image-size";
 import { HTTPError } from "lambert-server/HTTPError";
 import { Attachment, CloudAttachment, attachmentRequiresMembership, getDatabase, isGuildAttachmentMember } from "@spacebar/database";
-import {
-    Config,
-    extractVideoFrame,
-    hasValidSignature,
-    readVideoDimensions,
-    reserveVideoFrame,
-    NewUrlUserSignatureData,
-    Snowflake,
-    UrlSignResult,
-    isRequestSignature,
-} from "@spacebar/util";
+import { Config, extractVideoFrame, readVideoDimensions, reserveVideoFrame, NewUrlUserSignatureData, Snowflake, isRequestSignature, tryUrlSignature } from "@spacebar/util";
 import { storage, multer, setCacheControl, safeMediaType } from "../util";
 import { InternalCdnAttachment } from "@spacebar/util/dtos/MessageOptions";
 import { cleanAttachmentFilename } from "@spacebar/util/util/AttachmentFilename";
@@ -87,7 +77,7 @@ router.post(
     ),
 );
 
-router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req: Request, res: Response) => {
+router.get("/:channel_id/:attachment_id/:filename", async (req: Request, res: Response) => {
     const { channel_id, attachment_id, filename } = req.params as { [key: string]: string };
     // const { format } = req.query;
     if (!/^\d+$/.test(channel_id) || !/^\d+$/.test(attachment_id)) throw new HTTPError("File not found", 404);
@@ -101,34 +91,26 @@ router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req:
         hasValidAuth = isRequestSignature(req.headers.signature);
         if (!hasValidAuth) console.warn("[CDN/Attachments] Client sent invalid signature header");
     } else {
+        const signatureData = new NewUrlUserSignatureData({
+            ip: req.ip,
+            userAgent: req.headers["user-agent"] as string,
+        });
         const restrictedGuildId = await attachmentRequiresMembership(channel_id);
         if (restrictedGuildId) {
-            hasValidAuth =
-                (Config.get().security.cdnSignUrls &&
-                    hasValidSignature(
-                        new NewUrlUserSignatureData({
-                            ip: req.ip,
-                            userAgent: req.headers["user-agent"] as string,
-                        }),
-                        UrlSignResult.fromUrl(fullUrl),
-                    )) ||
-                (await isGuildAttachmentMember(restrictedGuildId, req.user_id));
+            hasValidAuth = tryUrlSignature(signatureData, fullUrl) || (await isGuildAttachmentMember(restrictedGuildId, req.user_id));
             if (!hasValidAuth) console.warn("[CDN/Attachments] Attachment link sharing is restricted for this server");
         } else if (!Config.get().security.cdnSignUrls) {
             hasValidAuth = true;
         } else {
-            hasValidAuth = hasValidSignature(
-                new NewUrlUserSignatureData({
-                    ip: req.ip,
-                    userAgent: req.headers["user-agent"] as string,
-                }),
-                UrlSignResult.fromUrl(fullUrl),
-            );
+            hasValidAuth = tryUrlSignature(signatureData, fullUrl);
             if (!hasValidAuth) console.warn("[CDN/Attachments] Client sent invalid attachment URL signature");
         }
     }
 
-    if (!hasValidAuth) return res.status(404).send("This content is no longer available.");
+    if (!hasValidAuth) {
+        res.set("Cache-Control", "no-store");
+        return res.status(404).send("This content is no longer available.");
+    }
 
     const release = admitDownload();
     const controller = new AbortController();
@@ -152,6 +134,7 @@ router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req:
         }
         if (!file) throw new HTTPError("File not found", 404);
         if (controller.signal.aborted) throw new HTTPError("Download aborted", 408);
+        setCacheControl(req, res, () => undefined);
         const inspected = await inspectDownload(file.stream, file.size);
         const type = await fileTypeFromBuffer(inspected.prefix);
         if (req.query.format && type?.mime.startsWith("video/")) {

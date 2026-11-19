@@ -10,7 +10,7 @@ The state is the `restrict_attachments` column on the guild, added by migration 
 
 ## What it does
 
-When the setting is on, `GET /attachments/:channel/:attachment/:filename` on the CDN authorizes a request for a file in a channel of that server only when one of these holds:
+When the setting is on, `GET /attachments/:channel/:attachment/:filename` on the CDN authorizes a request for a file in a channel of that server only when one of these holds, whether or not `security.cdnSignUrls` is on:
 
 - The URL carries a valid signature (`ex`, `is`, `hm`), which the client's image and file loads already do, because the message routes sign attachment URLs per requester with the requester's IP and user agent. A link copied to another machine or browser carries a signature for someone else, so it fails, and after `security.cdnSignatureDuration` (24 hours by default) it fails for everyone.
 - The request carries a token of a member of that server. This covers API-level reads such as the lightbox and scripts.

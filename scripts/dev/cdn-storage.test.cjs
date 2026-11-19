@@ -109,10 +109,9 @@ async function harness(t, options = {}) {
         "../util/downloadAdmission": load("src/cdn/util/downloadAdmission.ts", helpers),
         "@spacebar/util": {
             Config: { get: () => config },
-            hasValidSignature: () => false,
             isRequestSignature: (value) => value === config.security.requestSignature,
             NewUrlUserSignatureData: class {},
-            UrlSignResult: { fromUrl: () => ({}) },
+            tryUrlSignature: () => false,
         },
         "../util": {
             storage: {
