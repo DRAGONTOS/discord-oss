@@ -61,7 +61,7 @@ test("legacy signed media goes through the bounded public fetcher and rejects no
             const response = await fetch(url);
             assert.equal(response.status, 415);
             await response.text();
-            assert.equal(new URL(calls[0].url).searchParams.get("url"), "https://source.test/media");
+            assert.equal(calls[0].url, "https://source.test/media");
             assert.equal(calls[0].options.redirect, "error");
             assert.equal(calls[0].redirects, 0);
             assert.equal(calls[0].limits.maxBytes, 50 * 1024 * 1024);

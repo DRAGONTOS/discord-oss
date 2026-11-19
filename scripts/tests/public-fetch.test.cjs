@@ -310,6 +310,7 @@ test("embed image probes consume bounded downloaded streams and preserve disable
             getDefaultFetchOptions: () => ({}),
             isLocalMediaUrl: (url) => new URL(url).origin === settings.cdn.endpointPublic,
             corsProxyUrl: (url) => `https://cors.estrogen.delivery/?url=${encodeURIComponent(url.href)}`,
+            externalProxyUrl: (url) => url.href,
             isTrustedCdnAsset: (url, origin) => url.origin === origin && url.pathname === "/stickers/123.png",
             fetchPublicUrl: async (url, options, redirects, limits) => {
                 calls.push({ url, limits, redirects });

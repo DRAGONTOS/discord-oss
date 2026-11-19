@@ -39,6 +39,13 @@ const load = (file, imports, globals = {}) => {
 
 const media = load("src/util/util/MediaProxy.ts", { "./Config": { Config }, "@spacebar/schemas": { MessageComponentType, EmbedType } });
 
+const externalUrl = (href) => {
+    const parsed = new URL(href);
+    const path = `${parsed.search ? `${encodeURIComponent(parsed.search)}/` : ""}${parsed.protocol.replace(":", "")}/${parsed.host}${parsed.pathname}`;
+    const hash = require("node:crypto").createHmac("sha1", "fixture-signature").update(path).digest("base64url");
+    return `https://instance.test/external/${hash}/${path}`;
+};
+
 const routes = new Map();
 const fetched = [];
 const updates = [];
@@ -93,7 +100,7 @@ test("a youtube link becomes an iframe player that the client opens instead of a
         const embed = media.proxyEmbedMedia(await embeds.EmbedHandlers[url.hostname](url));
         assert.equal(embed.type, "video");
         assert.deepEqual(plain(embed.video), { url: "https://www.youtube.com/embed/wzWxtKxD-mc", width: 1280, height: 720 });
-        assert.match(embed.thumbnail.proxy_url, /^https:\/\/cors\.estrogen\.delivery\/\?url=.*hqdefault/);
+        assert.match(embed.thumbnail.proxy_url, /\/external\/[A-Za-z0-9_-]+\/https\/i\.ytimg\.com\/vi\/wzWxtKxD-mc\/hqdefault\.jpg$/);
         assert.equal(embed.provider.name, "YouTube");
     }
 });
@@ -103,7 +110,7 @@ test("stored player embeds lose a proxy_url so old cached youtube embeds play ag
     assert.deepEqual(plain(media.proxyEmbedMedia(stored).video), { url: "https://www.youtube.com/embed/wzWxtKxD-mc", width: 1280, height: 720 });
     for (const url of ["https://evil.test/embed/wzWxtKxD-mc", "http://www.youtube.com/embed/wzWxtKxD-mc", "https://www.youtube.com/watch?v=wzWxtKxD-mc"]) {
         const video = media.proxyEmbedMedia({ type: "rich", video: { url } }).video;
-        assert.match(video.proxy_url, /^https:\/\/cors\.estrogen\.delivery\//, url);
+        assert.match(video.proxy_url, /^https:\/\/instance\.test\/external\/[A-Za-z0-9_-]+\//, url);
     }
     assert.equal(media.isEmbedPlayerUrl("https://player.vimeo.com/video/76979871?h=8272103f6e"), true);
     assert.equal(media.isEmbedPlayerUrl("https://player.twitch.tv/?video=2093429367"), false);
@@ -118,13 +125,13 @@ test("direct video embeds carry a preview frame thumbnail, and old ones without 
     assert.equal(embed.thumbnail.proxy_url, media.videoFrameUrl(url));
     const shown = media.proxyEmbedMedia(embed);
     assert.equal(shown.thumbnail.proxy_url, media.videoFrameUrl(url));
-    assert.match(shown.video.proxy_url, /^https:\/\/cors\.estrogen\.delivery\//);
+    assert.match(shown.video.proxy_url, /^https:\/\/instance\.test\/external\/[A-Za-z0-9_-]+\//);
     const legacy = media.proxyEmbedMedia({ ...embed, thumbnail: undefined });
     assert.equal(legacy.thumbnail.proxy_url, media.videoFrameUrl(url));
     assert.equal(legacy.thumbnail.width, 960);
     assert.equal(media.proxyEmbedMedia({ type: "rich", video: { url: url.href, proxy_url: "x" } }).thumbnail, undefined);
     const spoofed = media.proxyEmbedMedia({ image: { url: "https://media.test/a.png", proxy_url: "https://instance.test/attachments/1/2/other.png" } });
-    assert.match(spoofed.image.proxy_url, /^https:\/\/cors\.estrogen\.delivery\//);
+    assert.match(spoofed.image.proxy_url, /^https:\/\/instance\.test\/external\/[A-Za-z0-9_-]+\//);
 });
 
 test("pages with og:video become video embeds only for known players or real video files", async () => {
@@ -137,7 +144,7 @@ test("pages with og:video become video embeds only for known players or real vid
     const file = embeds.pageVideo(page, { video: "/clip.mp4", video_width: 640, video_height: 360 });
     assert.equal(file.url, "https://vimeo.com/clip.mp4");
     assert.equal(file.content_type, "video/mp4");
-    assert.match(file.proxy_url, /^https:\/\/cors\.estrogen\.delivery\//);
+    assert.match(file.proxy_url, /^https:\/\/instance\.test\/external\/[A-Za-z0-9_-]+\//);
     assert.equal(embeds.pageVideo(page, { video: "https://player.twitch.tv/?video=1", video_type: "text/html", video_width: 620, video_height: 378 }), undefined);
     assert.equal(embeds.pageVideo(page, { video: "https://player.vimeo.com/video/1", video_type: "text/html" }), undefined);
 
@@ -296,7 +303,7 @@ test("components media without a stored type still renders from its extension, a
         { type: 12, items: [{ media: { url: "https://media.test/a.JPG" } }, { media: { url: "https://media.test/b.mp4?x=1" } }, { media: { url: "https://media.test/c" } }] },
     ]);
     assert.equal(gallery.items[0].media.content_type, "image/jpeg");
-    assert.match(gallery.items[0].media.proxy_url, /^https:\/\/cors\.estrogen\.delivery\//);
+    assert.match(gallery.items[0].media.proxy_url, /^https:\/\/instance\.test\/external\/[A-Za-z0-9_-]+\//);
     assert.equal(gallery.items[1].media.content_type, "video/mp4");
     assert.equal(gallery.items[1].media.proxy_url, media.externalProxyUrl(new URL("https://media.test/b.mp4?x=1")));
     assert.equal(gallery.items[2].media.content_type, undefined);

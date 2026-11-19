@@ -29,7 +29,15 @@ vm.runInNewContext(
                   : require(name),
     },
 );
-const { proxyEmbedMedia, proxyComponentsMedia, corsProxyUrl } = moduleFixture.exports;
+const { proxyEmbedMedia, proxyComponentsMedia, corsProxyUrl, externalProxyUrl, verifyExternalPath } = moduleFixture.exports;
+
+const crypto = require("node:crypto");
+const externalUrl = (href) => {
+    const parsed = new URL(href);
+    const path = `${parsed.search ? `${encodeURIComponent(parsed.search)}/` : ""}${parsed.protocol.replace(":", "")}/${parsed.host}${parsed.pathname}`;
+    const hash = crypto.createHmac("sha1", "fixture-signature").update(path).digest("base64url");
+    return `https://instance.test/external/${hash}/${path}`;
+};
 
 test("external embed media has no direct origin fallback and ignores supplied foreign proxies", () => {
     const input = {
@@ -41,7 +49,7 @@ test("external embed media has no direct origin fallback and ignores supplied fo
     const output = proxyEmbedMedia(input);
     assert.equal(output.url, input.url);
     for (const media of [output.image]) {
-        assert.match(media.url, /^https:\/\/cors\.estrogen\.delivery\/\?url=/);
+        assert.equal(media.url, externalUrl("https://source.test/a.png"));
         assert.equal(media.url, media.proxy_url);
     }
     assert.equal(output.author.icon_url, output.author.proxy_icon_url);
@@ -71,7 +79,9 @@ test("nested component galleries and thumbnails are proxied while private local 
         },
     ];
     const output = proxyComponentsMedia(input)[0].components;
-    assert.match(output[0].accessory.media.url, /^https:\/\/cors\.estrogen\.delivery\/\?url=/);
+    const accessoryUrl = new URL(output[0].accessory.media.url);
+    const [, , hash, ...rest] = accessoryUrl.pathname.split("/");
+    assert.ok(verifyExternalPath(hash, rest.join("/")));
     assert.equal(output[1].items[0].media.url, output[1].items[0].media.proxy_url);
     assert.equal(output[2].file.url, input[0].components[2].file.url);
     assert.equal(input[0].components[0].accessory.media.url, "https://source.test/a.png");
@@ -82,7 +92,7 @@ test("origin matching rejects CDN lookalikes and unsafe media schemes", () => {
         image: { url: "https://instance.test.evil.test/a.png" },
         thumbnail: { url: "javascript:alert(1)" },
     });
-    assert.match(output.image.url, /^https:\/\/cors\.estrogen\.delivery\/\?url=/);
+    assert.equal(output.image.url, externalUrl("https://instance.test.evil.test/a.png"));
     assert.equal(output.thumbnail.url, undefined);
     assert.equal(proxyEmbedMedia({ image: { url: "https://instance.test/attachments/1/a.png" } }).image.url, "https://instance.test/attachments/1/a.png");
 });
@@ -97,6 +107,6 @@ test("proxy URL encoding preserves queries, strips fragments and does not double
         proxyEmbedMedia({
             image: { url: source.href, proxy_url: "https://instance.test/external/legacy" },
         }).image.url,
-        result,
+        externalUrl(source.href),
     );
 });

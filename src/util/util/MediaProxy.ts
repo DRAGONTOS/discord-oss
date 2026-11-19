@@ -79,7 +79,7 @@ const proxied = (url?: string, current?: string) => {
     const parsed = new URL(url);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
     if (parsed.username || parsed.password) return undefined;
-    return corsProxyUrl(parsed);
+    return externalProxyUrl(parsed);
 };
 
 export function proxyComponentsMedia(components: BaseMessageComponents[]): BaseMessageComponents[] {

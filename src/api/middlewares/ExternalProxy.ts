@@ -1,4 +1,4 @@
-import { Config, corsProxyUrl, extractVideoFrame, fetchPublicUrl, reserveVideoFrame, verifyExternalPath } from "@spacebar/util";
+import { Config, extractVideoFrame, fetchPublicUrl, reserveVideoFrame, verifyExternalPath } from "@spacebar/util";
 import { Request, Response } from "express";
 
 const MAX_SIZE = 50 * 1024 * 1024;
@@ -35,7 +35,7 @@ async function serveExternalProxy(req: Request, res: Response) {
 
     let target: string;
     try {
-        target = corsProxyUrl(new URL(`${protocol}://${location.join("/")}${search}`));
+        target = new URL(`${protocol}://${location.join("/")}${search}`).href;
     } catch {
         return res.status(400).send("Invalid media URL");
     }

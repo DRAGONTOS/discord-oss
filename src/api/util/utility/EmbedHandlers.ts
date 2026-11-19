@@ -9,6 +9,7 @@ import {
     Config,
     emitEvent,
     corsProxyUrl,
+    externalProxyUrl,
     guessMediaType,
     isEmbedPlayerUrl,
     isLocalMediaUrl,
@@ -65,7 +66,7 @@ const makeEmbedImage = (url: string | undefined, width: number | undefined, heig
 
 export const getProxyUrl = (url: URL, _width: number, _height: number): string => {
     if (isLocalMediaUrl(url.href)) return url.href;
-    return corsProxyUrl(url);
+    return externalProxyUrl(url);
 };
 
 const getMeta = ($: cheerio.CheerioAPI, name: string): string | undefined => {
