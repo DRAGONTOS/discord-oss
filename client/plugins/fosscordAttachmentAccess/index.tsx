@@ -5,6 +5,7 @@ import { RestAPI, useState, useStateFromStores, useEffect } from "@webpack/commo
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import { SettingsSection } from "../fosscordCore/ui";
+import managedStyle from "./style.css?managed";
 
 const GuildSettingsStore = findStoreLazy("GuildSettingsStore") as { getGuildId(): string | null };
 
@@ -45,6 +46,7 @@ function AccessToggle() {
 
     return (
         <SettingsSection
+            className="fosscord-attachment-access"
             title="Attachment links"
             description="When this is on, links to files posted in this server only open for members of it. Copies of the links stop working for anyone outside, which keeps private uploads private."
         >
@@ -64,6 +66,7 @@ export default definePlugin({
     description: "Adds an attachment link sharing toggle to server settings under Access, so private servers can stop attachment links from working outside.",
     authors: [FosscordAuthor],
     required: true,
+    managedStyle,
 
     renderToggle: () => <AccessToggle />,
 
