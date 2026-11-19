@@ -78,8 +78,8 @@ const getMeta = ($: cheerio.CheerioAPI, name: string): string | undefined => {
 const tryParseInt = (str: string | undefined) => {
     if (!str) return undefined;
     try {
-        return parseInt(str);
-    } catch (e) {
+        return parseInt(str, 10);
+    } catch (_e) {
         return undefined;
     }
 };
@@ -134,13 +134,13 @@ const doFetch = async (url: URL, opts?: RequestInit) => {
     try {
         const res = await fetchEmbedUrl(url, OrmUtils.mergeDeep({ ...getDefaultFetchOptions() }, opts ?? {}));
         if (res.headers.get("content-length")) {
-            const contentLength = parseInt(res.headers.get("content-length")!);
+            const contentLength = parseInt(res.headers.get("content-length")!, 10);
             if (Config.get().limits.message.maxEmbedDownloadSize && contentLength > Config.get().limits.message.maxEmbedDownloadSize) {
                 return null;
             }
         }
         return res;
-    } catch (e) {
+    } catch (_e) {
         return null;
     }
 };
@@ -468,7 +468,7 @@ export const EmbedHandlers: {
 
         if (!url.href.includes("/status/")) return null; // TODO;
         const id = url.pathname.split("/")[3]; // super bad lol
-        if (!parseInt(id)) return null;
+        if (!parseInt(id, 10)) return null;
         const endpointUrl =
             `https://api.twitter.com/2/tweets/${id}` +
             `?expansions=author_id,attachments.media_keys` +
@@ -669,7 +669,7 @@ export const EmbedHandlers: {
 
     "reddit.com": (url) => EmbedHandlers["www.reddit.com"](url),
     "www.reddit.com": async (url: URL) => {
-        const res = await EmbedHandlers["default"](url);
+        const res = await EmbedHandlers.default(url);
         return {
             ...res,
             color: 16777215,
@@ -861,7 +861,7 @@ async function generateEmbedSingle(link: string, cb?: (url: string, embeds: Embe
     const url = new URL(link);
     const isLocal = url.origin === new URL(Config.get().cdn.endpointPublic!).origin;
     if (!isLocal && !Config.get().externalRequests.thirdParty) return null;
-    const handler = isLocal ? EmbedHandlers["self"] : (EmbedHandlers[url.hostname] ?? EmbedHandlers["default"]);
+    const handler = isLocal ? EmbedHandlers.self : (EmbedHandlers[url.hostname] ?? EmbedHandlers.default);
     try {
         let res = await handler(url);
         if (!res) return null;

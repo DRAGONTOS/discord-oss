@@ -29,7 +29,7 @@ vm.runInNewContext(
                   : require(name),
     },
 );
-const { proxyEmbedMedia, proxyComponentsMedia, externalProxyUrl, verifyExternalPath } = moduleFixture.exports;
+const { proxyEmbedMedia, proxyComponentsMedia, verifyExternalPath } = moduleFixture.exports;
 
 const crypto = require("node:crypto");
 const externalUrl = (href) => {
