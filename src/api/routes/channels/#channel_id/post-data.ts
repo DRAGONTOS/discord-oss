@@ -3,6 +3,7 @@ import { messageUpload } from "./messages";
 import { In } from "typeorm";
 import { route, parsePayloadJson } from "@spacebar/api/middlewares";
 import { Channel, Member, Message } from "@spacebar/database";
+import { requestSignatureData } from "@spacebar/util";
 import { PostDataSchema, PublicMember, PublicMessage } from "@spacebar/schemas";
 
 const router = Router({ mergeParams: true });
@@ -62,6 +63,7 @@ router.post(
                 }
             >;
         } = { threads: {} };
+        const signed = requestSignatureData(req);
         for (const thread of threads) {
             const owner = owners.find(({ id }) => id === thread.owner_id);
             const last = thread.last_message_id ? byId.get(thread.last_message_id) : undefined;
@@ -72,8 +74,11 @@ router.post(
                           roles: owner.roles.filter((r) => r.id !== guild_id).map((r) => r.id),
                       }
                     : null,
-                first_message: byId.get(thread.id)?.toPublicJSON(req.user_id) ?? null,
-                most_recent_message: last && last.id !== thread.id ? last.toPublicJSON(req.user_id) : null,
+                first_message: byId.get(thread.id)
+                    ? (Message.prototype.withSignedAttachments.call(byId.get(thread.id)!.toPublicJSON(req.user_id), signed) as unknown as PublicMessage)
+                    : null,
+                most_recent_message:
+                    last && last.id !== thread.id ? (Message.prototype.withSignedAttachments.call(last.toPublicJSON(req.user_id), signed) as unknown as PublicMessage) : null,
             };
         }
         return res.json(objRet);

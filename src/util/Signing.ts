@@ -16,6 +16,9 @@ export class NewUrlUserSignatureData {
     }
 }
 
+export const requestSignatureData = (req: { ip?: string; headers: { "user-agent"?: string | string[] | undefined } }): NewUrlUserSignatureData =>
+    new NewUrlUserSignatureData({ ip: req.ip, userAgent: req.headers["user-agent"] as string | undefined });
+
 export class NewUrlSignatureData extends NewUrlUserSignatureData {
     path?: string;
     url?: string;

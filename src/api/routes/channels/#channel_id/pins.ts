@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { IsNull, Not } from "typeorm";
 import { route } from "@spacebar/api/middlewares";
 import { AuditLogEvents } from "@spacebar/schemas";
-import { ChannelPinsUpdateEvent, Config, DiscordApiErrors, emitEvent, MessageCreateEvent, MessageUpdateEvent } from "@spacebar/util";
+import { ChannelPinsUpdateEvent, Config, DiscordApiErrors, emitEvent, MessageCreateEvent, MessageUpdateEvent, requestSignatureData } from "@spacebar/util";
 import { AuditLog, Message, ReadState, User } from "@spacebar/database";
 
 const router: Router = Router({ mergeParams: true });
@@ -226,7 +226,8 @@ router.get(
         });
         await Message.fillReplies(pins);
 
-        res.send(pins.map((message) => message.toPublicJSON(req.user_id)));
+        const signed = requestSignatureData(req);
+        res.send(pins.map((message) => Message.prototype.withSignedAttachments.call(message.toPublicJSON(req.user_id), signed)));
     },
 );
 

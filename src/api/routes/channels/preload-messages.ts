@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { Message } from "@spacebar/database";
-import { Config, getPermission } from "@spacebar/util";
+import { Config, getPermission, requestSignatureData } from "@spacebar/util";
 import { PreloadMessagesRequestSchema, PublicMessageListResponse } from "@spacebar/schemas";
 
 const router = Router({ mergeParams: true });
@@ -56,7 +56,7 @@ router.post(
         const filteredMessages = messages.map((message) => {
             const x = message.toJSON();
             x.reactions = undefined;
-            return x;
+            return Message.prototype.withSignedAttachments.call(x, requestSignatureData(req));
         }) as unknown as PublicMessageListResponse;
 
         return res.status(200).send(filteredMessages);

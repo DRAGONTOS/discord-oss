@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { Message } from "@spacebar/database";
-import { DiscordApiErrors } from "@spacebar/util";
+import { DiscordApiErrors, requestSignatureData } from "@spacebar/util";
 import { finalizePoll } from "@spacebar/api/util";
 
 const router: Router = Router({ mergeParams: true });
@@ -17,7 +17,7 @@ router.post("/", route({ permission: "VIEW_CHANNEL" }), async (req: Request, res
     if (message.author_id !== req.user_id) req.permission?.hasThrow("MANAGE_MESSAGES");
 
     const finalized = await finalizePoll(message.id);
-    res.json(finalized?.toPublicJSON(req.user_id));
+    res.json(finalized ? Message.prototype.withSignedAttachments.call(finalized.toPublicJSON(req.user_id), requestSignatureData(req)) : null);
 });
 
 export default router;

@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { handleMessage, postHandleMessage } from "@spacebar/api/util";
 import { Channel, Message, Webhook } from "@spacebar/database";
-import { DiscordApiErrors, emitEvent, MessageCreateEvent, MessageFlags, MessageUpdateEvent, Snowflake } from "@spacebar/util";
+import { DiscordApiErrors, emitEvent, MessageCreateEvent, MessageFlags, MessageUpdateEvent, requestSignatureData, Snowflake } from "@spacebar/util";
 import { ChannelType, MessageType, WebhookType } from "@spacebar/schemas";
 
 const router = Router({ mergeParams: true });
@@ -77,7 +77,7 @@ router.post(
             }
         }
 
-        return res.json(message.toJSON());
+        return res.json(Message.prototype.withSignedAttachments.call(message.toJSON(), requestSignatureData(req)));
     },
 );
 

@@ -15,6 +15,7 @@ import {
     getPermission,
     getRights,
     uploadFile,
+    requestSignatureData,
     NewUrlUserSignatureData,
     DiscordApiErrors,
     FieldErrors,
@@ -106,7 +107,7 @@ router.patch(
                 data: { ...message.toJSON(), nonce: undefined },
             } satisfies MessageUpdateEvent);
             if (unsuppressed) postHandleMessage(message).catch((e) => console.error("[Message] post-message handler failed", e));
-            return res.json(message.toPublicJSON(req.user_id));
+            return res.json(Message.prototype.withSignedAttachments.call(message.toPublicJSON(req.user_id), requestSignatureData(req)));
         }
 
         if (message.poll) {
@@ -183,7 +184,7 @@ router.patch(
         postHandleMessage(new_message).catch((e) => console.error("[Message] post-message handler failed", e));
         await syncCrosspostCopies(new_message);
 
-        return res.json(new_message.toPublicJSON(req.user_id));
+        return res.json(Message.prototype.withSignedAttachments.call(new_message.toPublicJSON(req.user_id), requestSignatureData(req)));
     },
 );
 
@@ -280,14 +281,7 @@ router.put(
         // no await as it shouldnt block the message send function and silently catch error
         postHandleMessage(message).catch((e) => console.error("[Message] post-message handler failed", e));
 
-        return res.json(
-            message.withSignedAttachments(
-                new NewUrlUserSignatureData({
-                    ip: req.ip,
-                    userAgent: req.headers["user-agent"] as string,
-                }),
-            ),
-        );
+        return res.json(message.withSignedAttachments(requestSignatureData(req)));
     },
 );
 
@@ -328,7 +322,7 @@ router.get(
 
         if (message.author_id !== req.user_id) permissions.hasThrow("READ_MESSAGE_HISTORY");
 
-        return res.json(message.toPublicJSON(req.user_id));
+        return res.json(Message.prototype.withSignedAttachments.call(message.toPublicJSON(req.user_id), requestSignatureData(req)));
     },
 );
 

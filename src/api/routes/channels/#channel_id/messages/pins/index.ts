@@ -3,7 +3,7 @@ import { IsNull, LessThan, Not } from "typeorm";
 import { route } from "@spacebar/api/middlewares";
 import { AuditLogEvents } from "@spacebar/schemas";
 import { AuditLog, Message, User } from "@spacebar/database";
-import { ChannelPinsUpdateEvent, Config, DiscordApiErrors, emitEvent, MessageCreateEvent, MessageUpdateEvent } from "@spacebar/util";
+import { ChannelPinsUpdateEvent, Config, DiscordApiErrors, emitEvent, MessageCreateEvent, MessageUpdateEvent, requestSignatureData } from "@spacebar/util";
 
 const router: Router = Router({ mergeParams: true });
 
@@ -223,7 +223,7 @@ router.get(
         await Message.fillReplies(pins);
 
         const items = pins.map((message: Message) => ({
-            message: message.toPublicJSON(req.user_id),
+            message: Message.prototype.withSignedAttachments.call(message.toPublicJSON(req.user_id), requestSignatureData(req)),
             pinned_at: message.pinned_at,
         }));
 

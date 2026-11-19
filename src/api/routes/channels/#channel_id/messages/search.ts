@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { getSearchableChannels, searchMessages, searchResponse, searchTabs } from "@spacebar/api/util";
 import { Channel } from "@spacebar/database";
-import { getPermission } from "@spacebar/util";
+import { getPermission, requestSignatureData } from "@spacebar/util";
 
 const router: Router = Router({ mergeParams: true });
 
@@ -30,7 +30,7 @@ router.get(
     async (req: Request, res: Response) => {
         const { channel_id } = req.params as { [key: string]: string };
         const channels = await searchable(req.user_id, channel_id);
-        res.json(searchResponse(req.user_id, await searchMessages(req.user_id, channels, { include_nsfw: true, ...req.query })));
+        res.json(searchResponse(req.user_id, await searchMessages(req.user_id, channels, { include_nsfw: true, ...req.query }), requestSignatureData(req)));
     },
 );
 
@@ -47,7 +47,7 @@ router.post(
     async (req: Request, res: Response) => {
         const { channel_id } = req.params as { [key: string]: string };
         const channels = await searchable(req.user_id, channel_id);
-        res.json(await searchTabs(req.user_id, channels, { include_nsfw: true, ...req.body }));
+        res.json(await searchTabs(req.user_id, channels, { include_nsfw: true, ...req.body }, requestSignatureData(req)));
     },
 );
 

@@ -2,7 +2,7 @@ import { isSqlite, sqlArrayLength, sqlLike } from "@spacebar/database/Sql";
 import { HTTPError } from "lambert-server/HTTPError";
 import { Brackets, In } from "typeorm";
 import { Channel, Message, Recipient, ThreadMember } from "@spacebar/database";
-import { FieldErrors, getPermission, MessageFlags } from "@spacebar/util";
+import { FieldErrors, getPermission, MessageFlags, NewUrlSignatureData, NewUrlUserSignatureData } from "@spacebar/util";
 import { MessageType } from "@spacebar/schemas";
 import { messageSearchErrors, searchTabErrors } from "@spacebar/api/util/handlers/FieldCaps";
 
@@ -172,18 +172,25 @@ export async function searchMessages(userId: string, channels: Channel[], query:
     return { messages, total_results };
 }
 
-export function searchResponse(userId: string, result: { messages: Message[]; total_results: number }) {
+export function searchResponse(userId: string, result: { messages: Message[]; total_results: number }, sigData?: NewUrlUserSignatureData) {
     return {
         analytics_id: null,
         doing_deep_historical_index: false,
         total_results: result.total_results,
-        messages: result.messages.map((message) => [{ ...message.toPublicJSON(userId), hit: true }]),
+        messages: result.messages.map((message) => [
+            { ...(sigData ? Message.prototype.withSignedAttachments.call(message.toPublicJSON(userId), sigData) : message.toPublicJSON(userId)), hit: true },
+        ]),
         threads: [],
         members: [],
     };
 }
 
-export async function searchTabs(userId: string, channels: Channel[], body: { tabs?: Record<string, MessageSearchQuery>; include_nsfw?: boolean }) {
+export async function searchTabs(
+    userId: string,
+    channels: Channel[],
+    body: { tabs?: Record<string, MessageSearchQuery>; include_nsfw?: boolean },
+    sigData?: NewUrlUserSignatureData,
+) {
     const entries = Object.entries(body.tabs ?? {});
     if (entries.length > 10) throw new HTTPError("search must contain at most 10 tabs", 422);
     const tabErrors = searchTabErrors(body.tabs);
@@ -195,7 +202,7 @@ export async function searchTabs(userId: string, channels: Channel[], body: { ta
             include_nsfw: body.include_nsfw,
             ...query,
         });
-        const response = searchResponse(userId, result);
+        const response = searchResponse(userId, result, sigData);
         tabs[name] = { ...response, cursor: null };
     }
     return { tabs, analytics_id: null, doing_deep_historical_index: false };

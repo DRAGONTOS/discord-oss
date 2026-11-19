@@ -28,6 +28,7 @@ function fixture(channels, rows = []) {
             if (name === "@spacebar/util")
                 return {
                     Config: { get: () => ({ limits: { message: { maxPreloadCount: 10 } } }) },
+                    requestSignatureData: () => ({}),
                     getPermission: async (userId, guildId, channelId) => {
                         permissionReads.push({ userId, guildId, channelId });
                         if (!channels[channelId]) throw new Error("unknown or inaccessible channel");
@@ -37,6 +38,11 @@ function fixture(channels, rows = []) {
             if (name === "@spacebar/database")
                 return {
                     Message: {
+                        prototype: {
+                            withSignedAttachments() {
+                                return this;
+                            },
+                        },
                         createQueryBuilder(alias) {
                             const call = { alias };
                             reads.push(call);
