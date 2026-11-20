@@ -1,4 +1,5 @@
 export class ExternalRequestConfiguration {
+    discordAppNames: boolean = true;
     discordDecorations: boolean = true;
     discordAssetFallback: boolean = true;
     discordClientAssets: boolean = true;

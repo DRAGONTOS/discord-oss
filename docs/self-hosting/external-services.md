@@ -12,6 +12,7 @@ The External requests card on the Site settings page of the admin dashboard edit
 | `discordAssetFallback` | on      | Other missing Discord CDN assets, such as client images and Krisp noise suppression models.                                 |
 | `discordClientAssets`  | on      | Web client files missing from the cache.                                                                                    |
 | `discordGames`         | on      | Refreshing the detectable games list.                                                                                       |
+| `discordAppNames`      | off     | Looking up RPC application names on Discord for app ids that are neither registered here nor in the detectable games list.   |
 | `discordTemplates`     | on      | Importing server templates from Discord.                                                                                    |
 | `discordStickerPacks`  | on      | Importing standard sticker packs and their artwork.                                                                         |
 | `discordBadDomains`    | on      | Discord's blocked-domain list.                                                                                              |

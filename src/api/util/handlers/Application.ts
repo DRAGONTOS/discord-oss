@@ -4,7 +4,7 @@ import { Application, ApplicationCommand, EmbeddedActivity, Member } from "@spac
 import { withApplicationOutbound } from "@spacebar/api/util/utility/applicationOutbound";
 import { DetectableGames, type DetectableGame } from "@spacebar/api/util/utility/games";
 import { serializeCommand } from "./ApplicationCommands";
-import { fetchPublicUrl, Snowflake } from "@spacebar/util";
+import { Config, fetchPublicUrl, Snowflake } from "@spacebar/util";
 
 export async function ensureInteractionKeys(applicationId: string) {
     const app = await Application.findOneOrFail({
@@ -179,6 +179,22 @@ export function detectableGameApplication(game: DetectableGame) {
     };
 }
 
+const discordAppNames = new Map<string, { app: ReturnType<typeof detectableGameApplication>; expires: number }>();
+
+async function fetchDiscordApplicationName(id: string) {
+    if (!/^\d{1,20}$/.test(id)) return undefined;
+    const cached = discordAppNames.get(id);
+    if (cached && cached.expires > Date.now()) return cached.app;
+    const response = await fetchPublicUrl(`https://discord.com/api/v9/oauth2/applications/${id}/rpc`, {}, 0, { maxBytes: 256 * 1024, timeoutMs: 5000 }).catch(() => undefined);
+    if (!response?.ok) return undefined;
+    const body = (await response.json().catch(() => undefined)) as { id?: string; name?: string; icon?: string | null } | undefined;
+    if (!body?.name || String(body.id) !== id) return undefined;
+    const app = detectableGameApplication({ id, name: body.name, icon_hash: body.icon ?? null });
+    if (discordAppNames.size > 5000) discordAppNames.clear();
+    discordAppNames.set(id, { app, expires: Date.now() + 6 * 3_600_000 });
+    return app;
+}
+
 export async function findPublicApplications(ids: string[]) {
     if (!ids.length) return [];
     const apps = await Application.find({ where: { id: In(ids) }, relations: { bot: true } });
@@ -195,10 +211,13 @@ export async function findPublicApplications(ids: string[]) {
             }),
         };
     });
+    const { byId } = await DetectableGames.load();
     const missing = ids.filter((id) => !apps.some((app) => app.id === id));
     if (!missing.length) return local;
-    const { byId } = await DetectableGames.load();
-    return [...local, ...missing.flatMap((id) => (byId.has(id) ? [detectableGameApplication(byId.get(id)!)] : []))];
+    const fromGames = missing.filter((id) => byId.has(id)).map((id) => detectableGameApplication(byId.get(id)!));
+    if (!Config.get().externalRequests.discordAppNames) return [...local, ...fromGames];
+    const fetched = await Promise.all(missing.filter((id) => !byId.has(id)).map((id) => fetchDiscordApplicationName(id)));
+    return [...local, ...fromGames, ...fetched.filter((app): app is NonNullable<typeof app> => !!app)];
 }
 
 export const isDirectoryApplication = async (app: Application) =>

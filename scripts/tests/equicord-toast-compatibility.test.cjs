@@ -49,7 +49,7 @@ test("private send and edit preparation failures use Equicord's current toast AP
         );
         assert.equal((await plugin[hook]("111")).cancel, true);
         assert.equal(clock, 20000);
-        assert.deepEqual(toasts, [["Private chat is still preparing. Try sending again.", "failure"]]);
+        assert.deepEqual(JSON.parse(JSON.stringify(toasts)), [[{ text: "Private chat is still preparing. Try sending again.", variant: "critical" }]]);
     }
 });
 
@@ -92,9 +92,11 @@ test("role templates use current success and partial-permission toasts after dis
             permissions: allowed,
         });
         const skipped = allowed === 3n ? 0 : allowed === 1n ? 1 : 2;
-        assert.deepEqual(events[1], [
-            skipped ? `Applied Member, without ${skipped} permission${skipped === 1 ? "" : "s"} you don't have. Save to keep it.` : "Applied Member. Save to keep it.",
-            skipped ? "message" : "success",
+        assert.deepEqual(JSON.parse(JSON.stringify(events[1])), [
+            {
+                text: skipped ? `Applied Member, without ${skipped} permission${skipped === 1 ? "" : "s"} you don't have. Save to keep it.` : "Applied Member. Save to keep it.",
+                variant: skipped ? "default" : "success",
+            },
         ]);
         assert.equal(events.length, 2);
     }
