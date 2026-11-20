@@ -1,0 +1,27 @@
+--- a/src/plugins/webScreenShare.browser/index.tsx
++++ b/src/plugins/webScreenShare.browser/index.tsx
+@@ -8,6 +8,7 @@
+ import { getUserSettingLazy } from "@api/UserSettings";
+ import { Heading } from "@components/Heading";
+ import {
++    Button,
+     Divider,
+     Paragraph,
+     Span,
+@@ -264,6 +265,16 @@
+                             <CustomSettingSelect label="Frame Rate" options={CustomFramerateOptions} settingsKey="framerate" />
+                         </div>
+                     )}
++                    {liveSettings.contentHint === "" && (
++                        <div className={cl("padding")}>
++                            <Button
++                                variant="secondary"
++                                onClick={() => (window as any).Vencord?.Plugins?.plugins?.FosscordGoLive?.openStreamKeyModal?.()}
++                            >
++                                Manage external stream key
++                            </Button>
++                        </div>
++                    )}
+                     <Divider />
+                     <div className={cl("padding", "pointer")}>
+                         <Checkbox

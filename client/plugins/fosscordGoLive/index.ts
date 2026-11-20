@@ -198,6 +198,10 @@ export default definePlugin({
         return renderGoLiveButton(props);
     },
 
+    openStreamKeyModal() {
+        openStreamKeyModal();
+    },
+
     patches: [
         {
             find: "setDesktopInput=",
