@@ -1,0 +1,159 @@
+diff --git a/src/plugins/webScreenShare.browser/index.tsx b/src/plugins/webScreenShare.browser/index.tsx
+--- a/src/plugins/webScreenShare.browser/index.tsx
++++ b/src/plugins/webScreenShare.browser/index.tsx
+@@ -16,7 +16,7 @@
+ import { classNameFactory } from "@utils/css";
+ import { Logger } from "@utils/Logger";
+ import definePlugin, { OptionType } from "@utils/types";
+-import { Checkbox, closeModal, Modal, openModal, } from "@webpack/common";
++import { Checkbox, closeModal, Modal, openModal, React, Select } from "@webpack/common";
+ 
+ import managedStyle from "./styles.css?managed";
+ 
+@@ -57,6 +57,60 @@
+     });
+ }
+ 
++type CustomStreamSettings = Record<"bitrate" | "resolution" | "framerate", number | string>;
++
++type CustomQuality = {
++    bitrate: number;
++    height: number;
++    width: number;
++    framerate: number;
++    source: boolean;
++};
++
++function getCustomSettingsStore(): CustomStreamSettings | undefined {
++    return window.Vencord?.Plugins?.plugins?.FosscordGoLive?.settings?.store as CustomStreamSettings | undefined;
++}
++
++function getCustomQuality(): CustomQuality {
++    const store = getCustomSettingsStore();
++    const bitrate = typeof store?.bitrate === "number" ? store.bitrate : 0;
++    const resolution = store?.resolution;
++    const height = typeof resolution === "number" && resolution > 0 ? resolution : 0;
++    const framerate = typeof store?.framerate === "number" ? store.framerate : 0;
++    return {
++        bitrate,
++        height,
++        width: height ? Math.round((height / 9) * 16) : 0,
++        framerate: framerate > 0 ? framerate : 0,
++        source: resolution === 0,
++    };
++}
++
++function CustomSettingSelect({ label, options, settingsKey }: {
++    label: string;
++    options: Array<{ label: string; value: number | string }>;
++    settingsKey: keyof CustomStreamSettings;
++}) {
++    const store = getCustomSettingsStore();
++    const [value, setValue] = React.useState(() => store?.[settingsKey] ?? 0);
++
++    return (
++        <section className={cl("quality-section")}>
++            <Heading tag="h4">{label}</Heading>
++            <Select
++                options={options}
++                isSelected={option => option === value}
++                select={option => {
++                    setValue(option);
++                    if (store) store[settingsKey] = option;
++                }}
++                serialize={String}
++                closeOnSelect={true}
++            />
++        </section>
++    );
++}
++
+ function OptionRadio<Settings extends object, Key extends keyof Settings, Options extends ReadonlyArray<string>>(props: {
+     options: Options;
+     labels?: Array<string>;
+@@ -97,8 +151,9 @@
+ 
+     async function stream() {
+         try {
+-            const frameRate = Number(liveSettings.frameRate);
+-            const height = Number(liveSettings.resolution);
++            const custom = getCustomQuality();
++            const frameRate = custom.framerate || Number(liveSettings.frameRate);
++            const height = custom.source ? 0 : custom.height || Number(liveSettings.resolution);
+ 
+             // const conn = [...MediaEngineStore.getMediaEngine().connections].find(
+             //     connection => connection.userId === UserStore.getCurrentUser().id
+@@ -113,6 +168,7 @@
+                 getDisplayMedia!({
+                     video: {
+                         ...videoOptions,
++                        ...(custom.width ? { width: custom.width } : {}),
+                         frameRate,
+                         height,
+                     },
+@@ -201,6 +257,13 @@
+                             />
+                         </div>
+                     </div>
++                    {liveSettings.contentHint === "" && (
++                        <div className={cl("flex", "padding")}>
++                            <CustomSettingSelect label="Bitrate" options={CustomBitrateOptions} settingsKey="bitrate" />
++                            <CustomSettingSelect label="Resolution" options={CustomResolutionOptions} settingsKey="resolution" />
++                            <CustomSettingSelect label="Frame Rate" options={CustomFramerateOptions} settingsKey="framerate" />
++                        </div>
++                    )}
+                     <Divider />
+                     <div className={cl("padding", "pointer")}>
+                         <Checkbox
+@@ -238,6 +301,30 @@
+ const StreamFps = ["15", "30", "60", "120"] as const;
+ const StreamContentHint = ["motion", "detail", ""] as const;
+ 
++const CustomBitrateOptions = [
++    { label: "Auto", value: 0 },
++    { label: "1000 kbps", value: 1000 },
++    { label: "2500 kbps", value: 2500 },
++    { label: "5000 kbps", value: 5000 },
++    { label: "8000 kbps", value: 8000 },
++    { label: "12000 kbps", value: 12000 },
++];
++const CustomResolutionOptions = [
++    { label: "Auto", value: "auto" },
++    { label: "480p", value: 480 },
++    { label: "720p", value: 720 },
++    { label: "1080p", value: 1080 },
++    { label: "1440p", value: 1440 },
++    { label: "Source", value: 0 },
++];
++const CustomFramerateOptions = [
++    { label: "Auto", value: 0 },
++    { label: "15 fps", value: 15 },
++    { label: "30 fps", value: 30 },
++    { label: "60 fps", value: 60 },
++    { label: "120 fps", value: 120 },
++];
++
+ const settings = definePluginSettings({
+     resolution: {
+         type: OptionType.SELECT,
+@@ -294,14 +381,15 @@
+     // this is a maximum, not a true default, this is later constrained properly in GDM anyways
+     // and this way we don't pre-emptively neuter the max stream quality
+     getGoliveMaxQuality(opts: any) {
+-        const framerate = 120;
+-        const height = 2160;
+-        const width = 3840;
++        const custom = getCustomQuality();
++        const framerate = custom.framerate || 120;
++        const height = custom.source ? 0 : custom.height || 2160;
++        const width = custom.source ? 0 : custom.width || 3840;
+ 
+         Object.assign(opts, {
+             bitrateMin: 500000,
+-            bitrateMax: 8000000,
+-            bitrateTarget: 600000
++            bitrateMax: custom.bitrate ? custom.bitrate * 1000 : 8000000,
++            bitrateTarget: custom.bitrate ? custom.bitrate * 1000 : 600000
+         });
+         if (opts?.encode) {
+             Object.assign(opts.encode, {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -29,6 +30,40 @@ var (
 	ipcConn *IpcConnection
 )
 
+type h264Profile struct {
+	profileID      string
+	payloadType    webrtc.PayloadType
+	rtxPayloadType webrtc.PayloadType
+}
+
+var h264Profiles = []h264Profile{
+	{"42e01f", 103, 104},
+	{"4d0028", 105, 106},
+	{"640028", 107, 108},
+}
+
+func h264CodecParameters() []webrtc.RTPCodecParameters {
+	var codecs []webrtc.RTPCodecParameters
+	for _, profile := range h264Profiles {
+		codecs = append(codecs, webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    webrtc.MimeTypeH264,
+				ClockRate:   90000,
+				SDPFmtpLine: "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=" + profile.profileID + ";x-google-max-bitrate=2500",
+			},
+			PayloadType: profile.payloadType,
+		}, webrtc.RTPCodecParameters{
+			RTPCodecCapability: webrtc.RTPCodecCapability{
+				MimeType:    webrtc.MimeTypeRTX,
+				ClockRate:   90000,
+				SDPFmtpLine: "apt=" + strconv.Itoa(int(profile.payloadType)),
+			},
+			PayloadType: profile.rtxPayloadType,
+		})
+	}
+	return codecs
+}
+
 // mediaEngine: only Opus + H264
 func createMediaEngine() (*webrtc.MediaEngine, error) {
 	m := &webrtc.MediaEngine{}
@@ -45,28 +80,10 @@ func createMediaEngine() (*webrtc.MediaEngine, error) {
 		return nil, err
 	}
 
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{
-			MimeType:     webrtc.MimeTypeH264,
-			ClockRate:    90000,
-			SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f;x-google-max-bitrate=2500",
-			RTCPFeedback: nil,
-		},
-		PayloadType: 103,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
-		return nil, err
-	}
-
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
-		RTPCodecCapability: webrtc.RTPCodecCapability{
-			MimeType:     webrtc.MimeTypeRTX,
-			ClockRate:    90000,
-			SDPFmtpLine:  "apt=103",
-			RTCPFeedback: nil,
-		},
-		PayloadType: 104,
-	}, webrtc.RTPCodecTypeVideo); err != nil {
-		return nil, err
+	for _, codec := range h264CodecParameters() {
+		if err := m.RegisterCodec(codec, webrtc.RTPCodecTypeVideo); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := m.RegisterHeaderExtension(webrtc.RTPHeaderExtensionCapability{URI: sdp.AudioLevelURI}, webrtc.RTPCodecTypeAudio); err != nil {
@@ -232,6 +249,7 @@ func handlePublish(p *Peer, msg SignalMessage) error {
 		p.isAudioPublished = true
 	} else {
 		p.isVideoPublished = true
+		p.maxBitrate = int(msg.MaxBitrate)
 	}
 	existing := p.getPublishedTrack(trackType)
 	p.mu.Unlock()
@@ -395,16 +413,20 @@ func setupOnTrack(p *Peer) {
 			cacheSize = 2048
 		}
 
+		p.mu.Lock()
+		requestedBitrateCap := p.maxBitrate
+		p.mu.Unlock()
 		pt := &PublishedTrack{
-			ssrc:       ssrc,
-			kind:       trackType,
-			key:        subscriptionKey(p.id, trackType),
-			publisher:  p,
-			extensions: extensions,
-			stop:       make(chan struct{}),
-			receiver:   receiver,
-			cache:      newPacketCache(cacheSize),
-			losses:     newLossTracker(),
+			ssrc:                ssrc,
+			kind:                trackType,
+			key:                 subscriptionKey(p.id, trackType),
+			publisher:           p,
+			extensions:          extensions,
+			stop:                make(chan struct{}),
+			receiver:            receiver,
+			cache:               newPacketCache(cacheSize),
+			losses:              newLossTracker(),
+			requestedBitrateCap: requestedBitrateCap,
 		}
 
 		p.mu.Lock()

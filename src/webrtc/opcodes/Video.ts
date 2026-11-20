@@ -102,6 +102,7 @@ export async function onVideo(this: WebRtcWebSocket, payload: VoicePayload) {
         // check if we are already publishing video, if not, publish a new video track for it
         const switchedLayer = this.voiceProtocol === "udp" && this.webRtcClient.getIncomingStreamSSRCs().video_ssrc !== videoSsrc;
         if (!this.webRtcClient!.isProducingVideo() || switchedLayer) {
+            (this.webRtcClient as { maxBitrate?: number }).maxBitrate = stream?.max_bitrate;
             console.log(`[${this.user_id}] publishing new video track ssrc:${videoSsrc}`);
             await this.webRtcClient.publishTrack("video", {
                 video_ssrc: videoSsrc,

@@ -497,6 +497,13 @@ func worstSubscriberLoss(pt *PublishedTrack, subscribers []*Peer) (loss float64,
 	return loss, remb
 }
 
+func clampBitrateCap(requested int) int {
+	if requested <= 0 {
+		return 0
+	}
+	return max(rembFloor, min(requested, rembCeiling))
+}
+
 func (pt *PublishedTrack) adjustBitrateCap(subscribers []*Peer) int {
 	total := pt.bytes.Load()
 	rate := int(float64(total-pt.lastBytes) * 8 / bandwidthTick.Seconds())
@@ -524,6 +531,12 @@ func (pt *PublishedTrack) adjustBitrateCap(subscribers []*Peer) int {
 	}
 	if remb > 0 {
 		limit = max(rembFloor, min(limit, remb))
+	}
+	if requested := clampBitrateCap(pt.requestedBitrateCap); requested > 0 {
+		if pt.bitrateCap > requested {
+			pt.bitrateCap = requested
+		}
+		limit = max(rembFloor, min(limit, requested))
 	}
 	return limit
 }

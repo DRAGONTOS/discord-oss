@@ -15,12 +15,31 @@ const VIDEO_EXTENSIONS = [
     "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
     "urn:3gpp:video-orientation",
 ];
+const H264_PROFILES = new Set(["42e01f", "4d0028", "64001f", "640028"]);
+const DEFAULT_H264_PROFILE = "42e01f";
+const DEFAULT_MAX_BITRATE = 2500;
+const MIN_MAX_BITRATE = 500;
+const MAX_MAX_BITRATE = 12000;
+
+export function parseVideoFmtp(sdp: string, videoPayload: number) {
+    const line = sdp
+        .split(/\r?\n/)
+        .map((value) => value.trim())
+        .find((value) => value.startsWith(`a=fmtp:${videoPayload} `));
+    const profile = line?.match(/(?:^|;)profile-level-id=([0-9a-fA-F]{6})(?:;|$)/)?.[1]?.toLowerCase();
+    const requested = line?.match(/(?:^|;)x-google-max-bitrate=(\d+)(?:;|$)/)?.[1];
+    return {
+        profile: profile && H264_PROFILES.has(profile) ? profile : DEFAULT_H264_PROFILE,
+        maxBitrate: requested ? Math.max(MIN_MAX_BITRATE, Math.min(MAX_MAX_BITRATE, Number(requested))) : DEFAULT_MAX_BITRATE,
+    };
+}
 
 class PionClient implements WebRtcClient<unknown> {
     readonly uniqueId = randomUUID();
     readonly emitter: ClientEmitter = new EventEmitter();
     webrtcConnected = false;
     videoStream?: VideoStream;
+    maxBitrate?: number;
     stopped = false;
     private incoming: SSRCs = {};
     private published = { audio: false, video: false };
@@ -57,11 +76,13 @@ class PionClient implements WebRtcClient<unknown> {
         if (type === "audio") this.incoming.audio_ssrc = ssrcs.audio_ssrc;
         else this.incoming = { ...ssrcs, audio_ssrc: this.incoming.audio_ssrc };
         this.published[type] = true;
+        const maxBitrate = type === "video" && this.maxBitrate && this.maxBitrate > 0 ? { maxBitrate: Math.round(this.maxBitrate) } : {};
         this.server.ipc.send({
             type: "publish",
             clientId: this.uniqueId,
             trackType: type,
             ...(type === "video" && { ssrc: ssrcs.video_ssrc, rtxSsrc: ssrcs.rtx_ssrc }),
+            ...maxBitrate,
         });
     }
 
@@ -298,6 +319,7 @@ export class PionMediaServer implements SignalingDelegate {
         const h264 = codecs.find((codec) => codec.name === "H264");
         const videoPayload = h264?.payload_type ?? 102;
         const rtxPayload = h264?.rtx_payload_type ?? 103;
+        const { profile, maxBitrate } = parseVideoFmtp(sdp, videoPayload);
         const transport = [
             `a=ice-ufrag:${attribute("ice-ufrag")}`,
             `a=ice-pwd:${attribute("ice-pwd")}`,
@@ -330,7 +352,7 @@ export class PionMediaServer implements SignalingDelegate {
             ...extmap(VIDEO_EXTENSIONS),
             `a=rtpmap:${videoPayload} H264/90000`,
             ...["ccm fir", "nack", "nack pli", "goog-remb", "transport-cc"].map((feedback) => `a=rtcp-fb:${videoPayload} ${feedback}`),
-            `a=fmtp:${videoPayload} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f;x-google-max-bitrate=2500`,
+            `a=fmtp:${videoPayload} level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=${profile};x-google-max-bitrate=${maxBitrate}`,
             `a=rtpmap:${rtxPayload} rtx/90000`,
             `a=fmtp:${rtxPayload} apt=${videoPayload}`,
             "",

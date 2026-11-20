@@ -21,6 +21,7 @@ export interface IpcPayload {
     audioPayloadType?: number;
     videoPayloadType?: number;
     rtxPayloadType?: number;
+    maxBitrate?: number;
 }
 
 interface IpcMessage {

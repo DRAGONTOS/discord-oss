@@ -34,6 +34,7 @@ type Peer struct {
 
 	isAudioPublished bool
 	isVideoPublished bool
+	maxBitrate       int
 
 	lastKeyframeRequest time.Time
 
@@ -138,16 +139,17 @@ type PublishedTrack struct {
 	cache      *packetCache
 	losses     *lossTracker
 
-	bytes          atomic.Uint64
-	lastBytes      uint64
-	bitrateCap     int
-	subscriberLoss float64
-	reportExpected uint32
-	reportReceived uint32
-	received       atomic.Uint64
-	nacked         atomic.Uint64
-	recovered      atomic.Uint64
-	lost           atomic.Uint64
+	bytes               atomic.Uint64
+	lastBytes           uint64
+	bitrateCap          int
+	requestedBitrateCap int
+	subscriberLoss      float64
+	reportExpected      uint32
+	reportReceived      uint32
+	received            atomic.Uint64
+	nacked              atomic.Uint64
+	recovered           atomic.Uint64
+	lost                atomic.Uint64
 }
 
 func (pt *PublishedTrack) blocked() bool {

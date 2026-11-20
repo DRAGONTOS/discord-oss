@@ -45,9 +45,10 @@ type SignalMessage struct {
 	Key         []byte `json:"key,omitempty"`
 	RtxSSRC     uint32 `json:"rtxSsrc,omitempty"`
 
-	AudioPayloadType uint8 `json:"audioPayloadType,omitempty"`
-	VideoPayloadType uint8 `json:"videoPayloadType,omitempty"`
-	RtxPayloadType   uint8 `json:"rtxPayloadType,omitempty"`
+	AudioPayloadType uint8  `json:"audioPayloadType,omitempty"`
+	VideoPayloadType uint8  `json:"videoPayloadType,omitempty"`
+	RtxPayloadType   uint8  `json:"rtxPayloadType,omitempty"`
+	MaxBitrate       uint32 `json:"maxBitrate,omitempty"`
 }
 
 func getListener(path string) (net.Listener, error) {
