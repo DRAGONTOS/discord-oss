@@ -142,6 +142,8 @@ class PionClient implements WebRtcClient<unknown> {
 
 export class PionMediaServer implements SignalingDelegate {
     private rooms = new Map<string, { type: RoomType; clients: Map<string, PionClient> }>();
+    private clientsByUniqueId = new Map<string, PionClient>();
+    private voiceClientsByUserId = new Map<string, PionClient>();
     private process?: ChildProcess;
     private stopping = false;
     private _ip = "127.0.0.1";
@@ -205,6 +207,8 @@ export class PionMediaServer implements SignalingDelegate {
     private dropClients() {
         for (const room of this.rooms.values()) for (const client of room.clients.values()) (client.websocket as { close?: (code: number) => void }).close?.(4015);
         this.rooms.clear();
+        this.clientsByUniqueId.clear();
+        this.voiceClientsByUserId.clear();
     }
 
     private onIpcClose() {
@@ -221,12 +225,11 @@ export class PionMediaServer implements SignalingDelegate {
 
     private onEvent(payload: IpcPayload) {
         if (payload.type !== "connected") return;
-        for (const room of this.rooms.values())
-            for (const client of room.clients.values())
-                if (client.uniqueId === payload.clientId) {
-                    client.webrtcConnected = true;
-                    client.emitter.emit("connected");
-                }
+        const client = this.clientsByUniqueId.get(payload.clientId);
+        if (client) {
+            client.webrtcConnected = true;
+            client.emitter.emit("connected");
+        }
     }
 
     async health() {
@@ -262,11 +265,10 @@ export class PionMediaServer implements SignalingDelegate {
     }
 
     async join<T>(roomId: string, userId: string, ws: T, type: RoomType): Promise<WebRtcClient<T>> {
-        if (type !== "stream")
-            for (const room of this.rooms.values()) {
-                const existing = room.type !== "stream" ? room.clients.get(userId) : undefined;
-                if (existing) this.onClientClose(existing);
-            }
+        if (type !== "stream") {
+            const existingVoiceClient = this.voiceClientsByUserId.get(userId);
+            if (existingVoiceClient) this.onClientClose(existingVoiceClient);
+        }
         const existing = this.findClient(roomId, userId);
         if (existing) this.onClientClose(existing);
 
@@ -274,6 +276,8 @@ export class PionMediaServer implements SignalingDelegate {
         if (!room) this.rooms.set(roomId, (room = { type, clients: new Map() }));
         const client = new PionClient(userId, roomId, ws, this);
         room.clients.set(userId, client);
+        this.clientsByUniqueId.set(client.uniqueId, client);
+        if (type !== "stream") this.voiceClientsByUserId.set(userId, client);
         await this.ipc.request({ type: "join", clientId: client.uniqueId });
         return client as WebRtcClient<T>;
     }
@@ -361,6 +365,8 @@ export class PionMediaServer implements SignalingDelegate {
         if (client.stopped) return;
         client.stopped = true;
         client.emitter.removeAllListeners();
+        this.clientsByUniqueId.delete(client.uniqueId);
+        if (this.voiceClientsByUserId.get(client.user_id) === client) this.voiceClientsByUserId.delete(client.user_id);
         const room = this.rooms.get(client.voiceRoomId);
         if (room?.clients.get(client.user_id) === client) room.clients.delete(client.user_id);
         for (const other of room?.clients.values() ?? []) other.outgoing.delete(client.user_id);

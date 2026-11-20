@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +31,7 @@ const (
 	nativeH264PayloadType  = 101
 	nativeRTXPayloadType   = 102
 	nativeNonceSuffix      = 4
+	maxNativeNonceSize     = 24
 	rtcpHeaderLength       = 8
 )
 
@@ -38,6 +40,19 @@ var errNativePacket = errors.New("not a decryptable native packet")
 type nativeCipher struct {
 	aead      cipher.AEAD
 	nonceSize int
+	scratch   sync.Pool
+}
+
+type nativeScratch struct {
+	nonce  [maxNativeNonceSize]byte
+	header [12]byte
+}
+
+func (c *nativeCipher) scratchBuffer() *nativeScratch {
+	if v := c.scratch.Get(); v != nil {
+		return v.(*nativeScratch)
+	}
+	return &nativeScratch{}
 }
 
 func newNativeCipher(mode string, key []byte) (*nativeCipher, error) {
@@ -66,12 +81,6 @@ func newNativeCipher(mode string, key []byte) (*nativeCipher, error) {
 	}
 }
 
-func (c *nativeCipher) nonce(counter []byte) []byte {
-	nonce := make([]byte, c.nonceSize)
-	copy(nonce, counter)
-	return nonce
-}
-
 func unencryptedHeaderLength(packet []byte) int {
 	length := 12 + 4*int(packet[0]&0x0f)
 	if packet[0]&0x10 != 0 {
@@ -94,7 +103,12 @@ func (c *nativeCipher) open(packet []byte) (*rtp.Packet, error) {
 	}
 	header := packet[:headerLength]
 	sealed := packet[headerLength : len(packet)-nativeNonceSuffix]
-	plain, err := c.aead.Open(nil, c.nonce(packet[len(packet)-nativeNonceSuffix:]), sealed, header)
+	buf := c.scratchBuffer()
+	nonce := buf.nonce[:c.nonceSize]
+	clear(nonce)
+	copy(nonce, packet[len(packet)-nativeNonceSuffix:])
+	plain, err := c.aead.Open(nil, nonce, sealed, header)
+	c.scratch.Put(buf)
 	if err != nil {
 		return nil, errNativePacket
 	}
@@ -134,15 +148,23 @@ func (c *nativeCipher) seal(pkt *rtp.Packet, payloadType uint8, counter uint32) 
 		Timestamp:      pkt.Timestamp,
 		SSRC:           pkt.SSRC,
 	}
-	headerBytes, err := header.Marshal()
+	buf := c.scratchBuffer()
+	n, err := header.MarshalTo(buf.header[:])
 	if err != nil {
+		c.scratch.Put(buf)
 		return nil, err
 	}
-	suffix := make([]byte, nativeNonceSuffix)
+	headerBytes := buf.header[:n]
+	var suffixScratch [nativeNonceSuffix]byte
+	suffix := suffixScratch[:]
 	binary.BigEndian.PutUint32(suffix, counter)
+	nonce := buf.nonce[:c.nonceSize]
+	clear(nonce)
+	copy(nonce, suffix)
 	out := make([]byte, 0, len(headerBytes)+len(pkt.Payload)+c.aead.Overhead()+nativeNonceSuffix)
 	out = append(out, headerBytes...)
-	out = c.aead.Seal(out, c.nonce(suffix), pkt.Payload, headerBytes)
+	out = c.aead.Seal(out, nonce, pkt.Payload, headerBytes)
+	c.scratch.Put(buf)
 	return append(out, suffix...), nil
 }
 
@@ -152,7 +174,12 @@ func (c *nativeCipher) openRTCP(packet []byte) ([]rtcp.Packet, error) {
 	}
 	header := packet[:rtcpHeaderLength]
 	sealed := packet[rtcpHeaderLength : len(packet)-nativeNonceSuffix]
-	plain, err := c.aead.Open(nil, c.nonce(packet[len(packet)-nativeNonceSuffix:]), sealed, header)
+	buf := c.scratchBuffer()
+	nonce := buf.nonce[:c.nonceSize]
+	clear(nonce)
+	copy(nonce, packet[len(packet)-nativeNonceSuffix:])
+	plain, err := c.aead.Open(nil, nonce, sealed, header)
+	c.scratch.Put(buf)
 	if err != nil {
 		return nil, errNativePacket
 	}
@@ -176,11 +203,17 @@ func (c *nativeCipher) sealRTCP(packets []rtcp.Packet, counter uint32) ([]byte, 
 	if len(raw) < rtcpHeaderLength {
 		return nil, errNativePacket
 	}
-	suffix := make([]byte, nativeNonceSuffix)
+	var suffixScratch [nativeNonceSuffix]byte
+	suffix := suffixScratch[:]
 	binary.BigEndian.PutUint32(suffix, counter)
+	buf := c.scratchBuffer()
+	nonce := buf.nonce[:c.nonceSize]
+	clear(nonce)
+	copy(nonce, suffix)
 	out := make([]byte, 0, len(raw)+c.aead.Overhead()+nativeNonceSuffix)
 	out = append(out, raw[:rtcpHeaderLength]...)
-	out = c.aead.Seal(out, c.nonce(suffix), raw[rtcpHeaderLength:], raw[:rtcpHeaderLength])
+	out = c.aead.Seal(out, nonce, raw[rtcpHeaderLength:], raw[:rtcpHeaderLength])
+	c.scratch.Put(buf)
 	return append(out, suffix...), nil
 }
 
@@ -242,7 +275,7 @@ type nativeTransport struct {
 	mu         sync.RWMutex
 	conn       net.PacketConn
 	bySSRC     map[uint32]*nativeClient
-	byAddr     map[string]*nativeClient
+	byAddr     map[netip.AddrPort]*nativeClient
 	discovered map[uint32]*net.UDPAddr
 }
 
@@ -251,7 +284,7 @@ var native = newNativeTransport()
 func newNativeTransport() *nativeTransport {
 	return &nativeTransport{
 		bySSRC:     make(map[uint32]*nativeClient),
-		byAddr:     make(map[string]*nativeClient),
+		byAddr:     make(map[netip.AddrPort]*nativeClient),
 		discovered: make(map[uint32]*net.UDPAddr),
 	}
 }
@@ -273,7 +306,7 @@ func (t *nativeTransport) register(client *nativeClient) {
 	if addr := t.discovered[client.ssrc]; addr != nil {
 		delete(t.discovered, client.ssrc)
 		client.addr.Store(addr)
-		t.byAddr[addr.String()] = client
+		t.byAddr[addr.AddrPort()] = client
 	}
 }
 
@@ -317,22 +350,22 @@ func (t *nativeTransport) forgetLocked(client *nativeClient) {
 		}
 	}
 	client.extra = nil
-	if addr := client.addr.Load(); addr != nil && t.byAddr[addr.String()] == client {
-		delete(t.byAddr, addr.String())
+	if addr := client.addr.Load(); addr != nil && t.byAddr[addr.AddrPort()] == client {
+		delete(t.byAddr, addr.AddrPort())
 	}
 }
 
 func (t *nativeTransport) bind(client *nativeClient, addr *net.UDPAddr) {
-	if previous := client.addr.Load(); previous != nil && previous.String() == addr.String() {
+	if previous := client.addr.Load(); previous != nil && previous.AddrPort() == addr.AddrPort() {
 		return
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if previous := client.addr.Load(); previous != nil && t.byAddr[previous.String()] == client {
-		delete(t.byAddr, previous.String())
+	if previous := client.addr.Load(); previous != nil && t.byAddr[previous.AddrPort()] == client {
+		delete(t.byAddr, previous.AddrPort())
 	}
 	client.addr.Store(addr)
-	t.byAddr[addr.String()] = client
+	t.byAddr[addr.AddrPort()] = client
 }
 
 func (t *nativeTransport) handle(packet []byte, from net.Addr) bool {
@@ -345,7 +378,7 @@ func (t *nativeTransport) handle(packet []byte, from net.Addr) bool {
 		return true
 	}
 	t.mu.RLock()
-	client := t.byAddr[addr.String()]
+	client := t.byAddr[addr.AddrPort()]
 	if client == nil && len(packet) >= 12 && packet[0]>>6 == 2 {
 		if isRTCPPacketType(packet[1]) {
 			client = t.bySSRC[binary.BigEndian.Uint32(packet[4:8])]
@@ -364,11 +397,11 @@ func (t *nativeTransport) handle(packet []byte, from net.Addr) bool {
 func (t *nativeTransport) answerDiscovery(ssrc uint32, addr *net.UDPAddr) {
 	t.mu.Lock()
 	if client := t.bySSRC[ssrc]; client != nil {
-		if previous := client.addr.Load(); previous != nil && t.byAddr[previous.String()] == client {
-			delete(t.byAddr, previous.String())
+		if previous := client.addr.Load(); previous != nil && t.byAddr[previous.AddrPort()] == client {
+			delete(t.byAddr, previous.AddrPort())
 		}
 		client.addr.Store(addr)
-		t.byAddr[addr.String()] = client
+		t.byAddr[addr.AddrPort()] = client
 	} else {
 		if len(t.discovered) > 4096 {
 			clear(t.discovered)
@@ -526,6 +559,7 @@ func (c *nativeClient) publishVideo(ssrc, rtxSSRC uint32) error {
 	previous := p.videoPublished
 	p.videoPublished = track
 	p.mu.Unlock()
+	sfu.SwapTrack(previous, track)
 	if previous != nil {
 		previous.close()
 	}
@@ -541,20 +575,7 @@ func (c *nativeClient) publishVideo(ssrc, rtxSSRC uint32) error {
 }
 
 func (sub *Peer) subscribedTrack(ssrc uint32) *PublishedTrack {
-	for _, publisher := range sfu.PeerSnapshot() {
-		if publisher == sub {
-			continue
-		}
-		publisher.mu.Lock()
-		tracks := []*PublishedTrack{publisher.audioPublished, publisher.videoPublished}
-		publisher.mu.Unlock()
-		for _, pt := range tracks {
-			if pt != nil && (uint32(pt.ssrc) == ssrc || (pt.kind == "video" && uint32(pt.ssrc)+1 == ssrc)) && sfu.IsSubscribed(sub, pt.key) {
-				return pt
-			}
-		}
-	}
-	return nil
+	return sfu.SubscribedTrackBySSRC(sub, ssrc)
 }
 
 func (sub *Peer) handleSubscriberRTCP(packets []rtcp.Packet) {
@@ -666,6 +687,7 @@ func handleNative(p *Peer, msg SignalMessage, requestID string) error {
 	p.transport = nil
 	pc := p.pc
 	p.mu.Unlock()
+	sfu.SwapTrack(previous, track)
 	if previous != nil {
 		previous.close()
 	}

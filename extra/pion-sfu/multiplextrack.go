@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -10,6 +11,18 @@ import (
 	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v4"
 )
+
+func parseApt(fmtp string) (int, bool) {
+	for _, field := range strings.Split(fmtp, ";") {
+		key, value, ok := strings.Cut(field, "=")
+		if !ok || !strings.EqualFold(strings.TrimSpace(key), "apt") {
+			continue
+		}
+		apt, err := strconv.Atoi(strings.TrimSpace(value))
+		return apt, err == nil
+	}
+	return 0, false
+}
 
 type trackBinding struct {
 	payloadType    uint8
@@ -48,9 +61,7 @@ func (t *MultiplexTrack) Bind(ctx webrtc.TrackLocalContext) (webrtc.RTPCodecPara
 	}
 
 	for _, c := range ctx.CodecParameters() {
-		// pion/webrtc MimeType strings are case-insensitive or generally exact match,
-		// but we can just use the constants which match natively.
-		if c.MimeType == expectedMime {
+		if strings.EqualFold(c.MimeType, expectedMime) {
 			negotiatedCodec = c
 			found = true
 			break
@@ -67,7 +78,10 @@ func (t *MultiplexTrack) Bind(ctx webrtc.TrackLocalContext) (webrtc.RTPCodecPara
 		writeStream: ctx.WriteStream(),
 	}
 	for _, c := range ctx.CodecParameters() {
-		if strings.EqualFold(c.MimeType, webrtc.MimeTypeRTX) && c.SDPFmtpLine == fmt.Sprintf("apt=%d", negotiatedCodec.PayloadType) {
+		if !strings.EqualFold(c.MimeType, webrtc.MimeTypeRTX) {
+			continue
+		}
+		if apt, ok := parseApt(c.SDPFmtpLine); ok && apt == int(negotiatedCodec.PayloadType) {
 			binding.rtxPayloadType = uint8(c.PayloadType)
 		}
 	}
@@ -102,7 +116,8 @@ func remapExtensions(dst *rtp.Header, src *rtp.Header, from map[uint8]string, to
 		id      uint8
 		payload []byte
 	}
-	kept := make([]extension, 0, len(src.Extensions))
+	var keptScratch [8]extension
+	kept := keptScratch[:0]
 	twoByte := false
 	for _, id := range src.GetExtensionIDs() {
 		uri, ok := from[id]
@@ -128,6 +143,8 @@ func remapExtensions(dst *rtp.Header, src *rtp.Header, from map[uint8]string, to
 	if twoByte {
 		dst.ExtensionProfile = rtp.ExtensionProfileTwoByte
 	}
+	var extensionsScratch [8]rtp.Extension
+	dst.Extensions = extensionsScratch[:0]
 	for _, e := range kept {
 		_ = dst.SetExtension(e.id, e.payload)
 	}

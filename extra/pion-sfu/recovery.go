@@ -68,6 +68,19 @@ func (c *packetCache) get(seq uint16) *rtp.Packet {
 	return p
 }
 
+func (c *packetCache) getMany(seqs []uint16, out []*rtp.Packet) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for i, seq := range seqs {
+		p := c.packets[int(seq)%len(c.packets)]
+		if p != nil && p.SequenceNumber == seq {
+			out[i] = p
+		} else {
+			out[i] = nil
+		}
+	}
+}
+
 const (
 	nackReorderDelay  = 10 * time.Millisecond
 	nackRetryInterval = 100 * time.Millisecond
@@ -228,8 +241,13 @@ func (pt *PublishedTrack) requestKeyframe() {
 	}
 }
 
-func readRepairStream(p *Peer, remoteTrack *webrtc.TrackRemote) {
+func readRepairStream(p *Peer, remoteTrack *webrtc.TrackRemote, stop <-chan struct{}) {
 	for {
+		select {
+		case <-stop:
+			return
+		default:
+		}
 		pkt, _, err := remoteTrack.ReadRTP()
 		if err != nil {
 			return
@@ -362,26 +380,40 @@ func (sub *Peer) retransmit(pt *PublishedTrack, nack *rtcp.TransportLayerNack) {
 	}
 	rtxSSRC := uint32(pt.ssrc) + 1
 	sequence := func() uint16 { return sub.nextRTXSequence(rtxSSRC) }
-	for _, pair := range nack.Nacks {
-		for _, seq := range pair.PacketList() {
-			sub.nacksReceived.Add(1)
-			pkt := pt.cache.get(seq)
-			if pkt == nil {
-				sub.notCached.Add(1)
-				continue
-			}
-			sub.retransmitted.Add(1)
-			if client := sub.native.Load(); client != nil {
-				client.retransmit(pt, pkt)
-				continue
-			}
-			if pt.kind == "video" {
-				if sent, _ := sub.masterVideo.WriteRTX(pkt, rtxSSRC, sequence, pt.extensions); sent {
-					continue
-				}
-			}
-			_ = sub.master(pt.kind).WriteRTP(pkt, pt.extensions)
+	var seqScratch [128]uint16
+	seqs := seqScratch[:0]
+	for i := range nack.Nacks {
+		pair := &nack.Nacks[i]
+		seqs = append(seqs, pair.PacketList()...)
+	}
+	if len(seqs) == 0 {
+		return
+	}
+	var packetsScratch [128]*rtp.Packet
+	var packets []*rtp.Packet
+	if len(seqs) <= len(packetsScratch) {
+		packets = packetsScratch[:len(seqs)]
+	} else {
+		packets = make([]*rtp.Packet, len(seqs))
+	}
+	pt.cache.getMany(seqs, packets)
+	for _, pkt := range packets {
+		sub.nacksReceived.Add(1)
+		if pkt == nil {
+			sub.notCached.Add(1)
+			continue
 		}
+		sub.retransmitted.Add(1)
+		if client := sub.native.Load(); client != nil {
+			client.retransmit(pt, pkt)
+			continue
+		}
+		if pt.kind == "video" {
+			if sent, _ := sub.masterVideo.WriteRTX(pkt, rtxSSRC, sequence, pt.extensions); sent {
+				continue
+			}
+		}
+		_ = sub.master(pt.kind).WriteRTP(pkt, pt.extensions)
 	}
 }
 

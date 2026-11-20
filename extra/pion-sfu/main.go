@@ -358,7 +358,13 @@ func handleUnsubscribe(p *Peer, msg SignalMessage) error {
 		return fmt.Errorf("missing publisherId")
 	}
 
-	return sfu.Unsubscribe(p, subscriptionKey(publisherID, trackType))
+	if err := sfu.Unsubscribe(p, subscriptionKey(publisherID, trackType)); err != nil {
+		return err
+	}
+	if publisher := sfu.GetPeer(publisherID); publisher != nil {
+		p.dropSinks(publisher)
+	}
+	return nil
 }
 
 func setupOnTrack(p *Peer) {
@@ -372,7 +378,7 @@ func setupOnTrack(p *Peer) {
 			trackType = "video"
 		case remoteTrack.Kind() == webrtc.RTPCodecTypeVideo && strings.EqualFold(mime, webrtc.MimeTypeRTX):
 			log.Printf("Client %s started sending retransmissions (SSRC: %d)", p.id, remoteTrack.SSRC())
-			go readRepairStream(p, remoteTrack)
+			go readRepairStream(p, remoteTrack, p.repairStopChannel())
 			return
 		default:
 			log.Printf("Client %s started publishing unknown track type %s", p.id, mime)
@@ -396,6 +402,7 @@ func setupOnTrack(p *Peer) {
 			publisher:  p,
 			extensions: extensions,
 			stop:       make(chan struct{}),
+			receiver:   receiver,
 			cache:      newPacketCache(cacheSize),
 			losses:     newLossTracker(),
 		}
@@ -404,6 +411,7 @@ func setupOnTrack(p *Peer) {
 		previous := p.getPublishedTrack(trackType)
 		p.setPublishedTrack(trackType, pt)
 		p.mu.Unlock()
+		sfu.SwapTrack(previous, pt)
 		if previous != nil {
 			previous.close()
 		}
@@ -443,24 +451,31 @@ func setupOnTrack(p *Peer) {
 // ---------------------------------------------------------------------------
 
 func cleanupPeer(p *Peer) {
+	subscribers := sfu.SubscribersOf(p.id)
 	sfu.RemovePeer(p.id)
 	p.leaveNative()
 
+	var stale []*PublishedTrack
 	p.mu.Lock()
 	if p.audioPublished != nil {
-		p.audioPublished.close()
-		p.isAudioPublished = false
+		stale = append(stale, p.audioPublished)
 		p.audioPublished = nil
+		p.isAudioPublished = false
 	}
 	if p.videoPublished != nil {
-		p.videoPublished.close()
-		p.isVideoPublished = false
+		stale = append(stale, p.videoPublished)
 		p.videoPublished = nil
+		p.isVideoPublished = false
 	}
 	p.mu.Unlock()
+	for _, pt := range stale {
+		pt.close()
+		sfu.ForgetTrack(pt)
+	}
 	p.dropSinks(nil)
+	p.closeRepairStop()
 
-	for _, other := range sfu.PeerSnapshot() {
+	for _, other := range subscribers {
 		other.dropSinks(p)
 	}
 

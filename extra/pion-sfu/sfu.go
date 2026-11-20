@@ -11,6 +11,7 @@ type Sfu struct {
 	peers         map[string]*Peer
 	subscribers   map[string][]*Peer
 	subscriptions map[*Peer]map[string]struct{}
+	tracksBySSRC  map[uint32]*PublishedTrack
 }
 
 func NewSfu() *Sfu {
@@ -18,7 +19,85 @@ func NewSfu() *Sfu {
 		peers:         make(map[string]*Peer),
 		subscribers:   make(map[string][]*Peer),
 		subscriptions: make(map[*Peer]map[string]struct{}),
+		tracksBySSRC:  make(map[uint32]*PublishedTrack),
 	}
+}
+
+func (r *Sfu) indexTrackLocked(pt *PublishedTrack) {
+	if pt == nil {
+		return
+	}
+	r.tracksBySSRC[uint32(pt.ssrc)] = pt
+	if pt.kind == "video" {
+		r.tracksBySSRC[uint32(pt.ssrc)+1] = pt
+	}
+}
+
+func (r *Sfu) forgetTrackLocked(pt *PublishedTrack) {
+	if pt == nil {
+		return
+	}
+	if r.tracksBySSRC[uint32(pt.ssrc)] == pt {
+		delete(r.tracksBySSRC, uint32(pt.ssrc))
+	}
+	if pt.kind == "video" && r.tracksBySSRC[uint32(pt.ssrc)+1] == pt {
+		delete(r.tracksBySSRC, uint32(pt.ssrc)+1)
+	}
+}
+
+func (r *Sfu) IndexTrack(pt *PublishedTrack) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.indexTrackLocked(pt)
+}
+
+func (r *Sfu) ForgetTrack(pt *PublishedTrack) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.forgetTrackLocked(pt)
+}
+
+func (r *Sfu) SwapTrack(previous, next *PublishedTrack) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.forgetTrackLocked(previous)
+	r.indexTrackLocked(next)
+}
+
+func (r *Sfu) isSubscribedLocked(sub *Peer, key string) bool {
+	_, ok := r.subscriptions[sub][key]
+	return ok
+}
+
+func (r *Sfu) SubscribedTrackBySSRC(sub *Peer, ssrc uint32) *PublishedTrack {
+	r.mu.RLock()
+	pt := r.tracksBySSRC[ssrc]
+	stale := pt != nil && pt.isClosed()
+	if pt == nil || stale || pt.publisher == sub || !r.isSubscribedLocked(sub, pt.key) {
+		r.mu.RUnlock()
+		if stale {
+			r.ForgetTrack(pt)
+		}
+		return nil
+	}
+	r.mu.RUnlock()
+	return pt
+}
+
+func (r *Sfu) SubscribersOf(publisherID string) []*Peer {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	seen := make(map[*Peer]struct{})
+	var subs []*Peer
+	for _, trackType := range []string{"audio", "video"} {
+		for _, sub := range r.subscribers[subscriptionKey(publisherID, trackType)] {
+			if _, ok := seen[sub]; !ok {
+				seen[sub] = struct{}{}
+				subs = append(subs, sub)
+			}
+		}
+	}
+	return subs
 }
 
 func subscriptionKey(publisherID, trackType string) string {
@@ -127,6 +206,5 @@ func (r *Sfu) Subscribers(key string) []*Peer {
 func (r *Sfu) IsSubscribed(sub *Peer, key string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	_, ok := r.subscriptions[sub][key]
-	return ok
+	return r.isSubscribedLocked(sub, key)
 }

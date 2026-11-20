@@ -300,6 +300,7 @@ func TestWebRtcVideoReachesANativeViewer(t *testing.T) {
 		losses:     newLossTracker(),
 	}
 	web.videoPublished = track
+	sfu.IndexTrack(track)
 	viewer := joinNative(t, server, "viewer", 8001, modeAES256GCM, testKey(80), 105, 106)
 	if err := sfu.Subscribe(viewer.peer, web, "video"); err != nil {
 		t.Fatal(err)

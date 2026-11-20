@@ -338,6 +338,7 @@ func TestWebRtcPublisherAudioReachesANativeSubscriber(t *testing.T) {
 		losses:     newLossTracker(),
 	}
 	web.audioPublished = track
+	sfu.IndexTrack(track)
 
 	key := testKey(60)
 	listener := nativePeer(t, "listener", 3003, modeAES256GCM, key)

@@ -7,13 +7,43 @@ import { boundedDispatchPush, bufferForResume, notePayloadSize, rememberDispatch
 import { filterBotDispatch } from "./GatewayIntents";
 import { packEtf } from "./Etf";
 
-const serializedData = new WeakMap<object, string>();
+type DispatchCache = {
+    t: string;
+    dJson: string;
+    prefix: string;
+    suffix: string;
+    baseBytes: number;
+    parsed?: Record<string, unknown>;
+};
+
+const serializedData = new WeakMap<object, DispatchCache>();
+
+function encodePayload(data: Payload): { json: string; bytes: number; cache?: DispatchCache } {
+    const d = data.d;
+    if (data.op !== 0 || typeof data.t !== "string" || typeof data.s !== "number" || typeof d !== "object" || d === null) {
+        const json = JSONStringify(data);
+        return { json, bytes: Buffer.byteLength(json) };
+    }
+    let cache = serializedData.get(d);
+    if (!cache || cache.t !== data.t) {
+        const dJson = JSONStringify(d);
+        const prefix = `{"op":0,"t":${JSON.stringify(data.t)},"d":`;
+        const suffix = `,"s":`;
+        cache = {
+            t: data.t,
+            dJson,
+            prefix,
+            suffix,
+            baseBytes: Buffer.byteLength(prefix) + Buffer.byteLength(dJson) + Buffer.byteLength(suffix) + 1,
+        };
+        serializedData.set(d, cache);
+    }
+    const s = `${data.s}`;
+    return { json: `${cache.prefix}${cache.dJson}${cache.suffix}${s}}`, bytes: cache.baseBytes + s.length, cache };
+}
 
 export function serializePayload(data: Payload) {
-    if (data.op !== 0 || typeof data.t !== "string" || typeof data.s !== "number" || typeof data.d !== "object" || data.d === null) return JSONStringify(data);
-    let d = serializedData.get(data.d);
-    if (d === undefined) serializedData.set(data.d, (d = JSONStringify(data.d)));
-    return `{"op":0,"t":${JSON.stringify(data.t)},"d":${d},"s":${data.s}}`;
+    return encodePayload(data).json;
 }
 
 export async function Send(target: WebSocket, data: Payload, guildId?: string) {
@@ -28,11 +58,25 @@ export async function Send(target: WebSocket, data: Payload, guildId?: string) {
         }
         return;
     }
-    const json = serializePayload(data);
-    notePayloadSize(data, Buffer.byteLength(json));
+    const encoded = encodePayload(data);
+    const json = encoded.json;
+    notePayloadSize(data, encoded.bytes);
     if (socket.readyState !== 1 && data.op === 0 && bufferForResume(socket, data)) return;
     rememberDispatch(socket, data);
     if (process.env.WS_VERBOSE) console.log(`[Websocket] Outgoing message: ${JSON.stringify(data)}`);
+    if (socket.encoding !== "json" && socket.encoding !== "etf") return;
+
+    let buffer: Buffer | string = json;
+    if (socket.encoding === "etf") {
+        let parsed = encoded.cache?.parsed;
+        if (!parsed) {
+            parsed = JSON.parse(json) as Record<string, unknown>;
+            if (encoded.cache) encoded.cache.parsed = parsed;
+        } else parsed.s = data.s;
+        buffer = packEtf(parsed);
+    }
+    if (socket.compress === "zlib-stream") buffer = socket.deflate!.process(buffer) as Buffer;
+    else if (socket.compress === "zstd-stream") buffer = socket.zstdEncoder!.process(buffer);
 
     if (process.env.WS_DUMP) {
         const id = socket.session_id || "unknown";
@@ -42,13 +86,6 @@ export async function Send(target: WebSocket, data: Payload, guildId?: string) {
         });
         await fs.writeFile(path.join("dump", id, `${Date.now()}.out.json`), JSON.stringify(data, null, 2));
     }
-
-    if (socket.encoding !== "json" && socket.encoding !== "etf") return;
-    let buffer: Buffer | string = json;
-    if (socket.encoding === "etf") buffer = packEtf(JSON.parse(buffer));
-
-    if (socket.compress === "zlib-stream") buffer = socket.deflate!.process(buffer) as Buffer;
-    else if (socket.compress === "zstd-stream") buffer = socket.zstdEncoder!.process(buffer);
 
     return new Promise((res) => {
         if (socket.readyState === 1 && socket.bufferedAmount + (typeof buffer === "string" ? Buffer.byteLength(buffer) : buffer.byteLength) > 32 * 1024 * 1024) {

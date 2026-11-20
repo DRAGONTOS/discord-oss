@@ -43,6 +43,8 @@ type Peer struct {
 
 	sinks map[uint32]*rtcpSink
 
+	repairStop chan struct{}
+
 	rtxSequence map[uint32]uint16
 
 	remb      float32
@@ -102,6 +104,28 @@ func (p *Peer) nextRTXSequence(ssrc uint32) uint16 {
 	return seq
 }
 
+func (p *Peer) repairStopChannel() <-chan struct{} {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.repairStop == nil {
+		p.repairStop = make(chan struct{})
+	}
+	return p.repairStop
+}
+
+func (p *Peer) closeRepairStop() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.repairStop == nil {
+		p.repairStop = make(chan struct{})
+	}
+	select {
+	case <-p.repairStop:
+	default:
+		close(p.repairStop)
+	}
+}
+
 type PublishedTrack struct {
 	ssrc       webrtc.SSRC
 	kind       string
@@ -110,6 +134,7 @@ type PublishedTrack struct {
 	extensions map[uint8]string
 	stop       chan struct{}
 	stopOnce   sync.Once
+	receiver   *webrtc.RTPReceiver
 	cache      *packetCache
 	losses     *lossTracker
 
@@ -149,6 +174,20 @@ func (p *Peer) moderate(blockAudio, blockVideo, deaf bool) {
 	}
 }
 
+func (pt *PublishedTrack) isClosed() bool {
+	select {
+	case <-pt.stop:
+		return true
+	default:
+		return false
+	}
+}
+
 func (pt *PublishedTrack) close() {
-	pt.stopOnce.Do(func() { close(pt.stop) })
+	pt.stopOnce.Do(func() {
+		close(pt.stop)
+		if pt.receiver != nil {
+			_ = pt.receiver.Stop()
+		}
+	})
 }

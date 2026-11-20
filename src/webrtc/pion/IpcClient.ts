@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import net from "node:net";
 
+const MAX_IN_FLIGHT_REQUESTS = 128;
+
 export interface IpcPayload {
     type: string;
     clientId: string;
@@ -30,7 +32,8 @@ interface IpcMessage {
 
 export class IpcClient {
     private socket?: net.Socket;
-    private buffer = Buffer.alloc(0);
+    private chunks: Buffer[] = [];
+    private bufferedLength = 0;
     private pending = new Map<
         string,
         {
@@ -68,7 +71,8 @@ export class IpcClient {
             const socket = net.createConnection(this.socketPath);
             socket.once("connect", () => {
                 this.socket = socket;
-                this.buffer = Buffer.alloc(0);
+                this.chunks = [];
+                this.bufferedLength = 0;
                 socket.on("data", (chunk: Buffer) => this.onData(chunk));
                 socket.on("close", () => {
                     this.rejectAll(new Error("IPC connection closed"));
@@ -85,14 +89,45 @@ export class IpcClient {
     }
 
     private onData(chunk: Buffer) {
-        this.buffer = Buffer.concat([this.buffer, chunk]);
-        while (this.buffer.length >= 4) {
-            const length = this.buffer.readUInt32BE(0);
-            if (this.buffer.length < 4 + length) break;
-            const body = this.buffer.subarray(4, 4 + length);
-            this.buffer = this.buffer.subarray(4 + length);
-            this.onMessage(JSON.parse(body.toString()) as IpcMessage);
+        this.chunks.push(chunk);
+        this.bufferedLength += chunk.length;
+        while (this.bufferedLength >= 4) {
+            const length = this.peekUInt32BE();
+            if (this.bufferedLength < 4 + length) break;
+            const frame = this.consume(4 + length);
+            this.onMessage(JSON.parse(frame.subarray(4).toString()) as IpcMessage);
         }
+    }
+
+    private peekUInt32BE() {
+        let remaining = 4;
+        let value = 0;
+        outer: for (const chunk of this.chunks) {
+            for (let i = 0; i < chunk.length; i++) {
+                value = (value << 8) | chunk[i];
+                if (--remaining === 0) break outer;
+            }
+        }
+        return value >>> 0;
+    }
+
+    private consume(count: number) {
+        const pieces: Buffer[] = [];
+        let remaining = count;
+        while (remaining > 0) {
+            const chunk = this.chunks[0];
+            if (chunk.length <= remaining) {
+                pieces.push(chunk);
+                this.chunks.shift();
+                remaining -= chunk.length;
+            } else {
+                pieces.push(chunk.subarray(0, remaining));
+                this.chunks[0] = chunk.subarray(remaining);
+                remaining = 0;
+            }
+        }
+        this.bufferedLength -= count;
+        return pieces.length === 1 ? pieces[0] : Buffer.concat(pieces, count);
     }
 
     private onMessage(message: IpcMessage) {
@@ -118,6 +153,10 @@ export class IpcClient {
         return new Promise<IpcPayload>((resolve, reject) => {
             if (!this.connected) {
                 reject(new Error("SFU IPC socket is not connected"));
+                return;
+            }
+            if (this.pending.size >= MAX_IN_FLIGHT_REQUESTS) {
+                reject(new Error(`SFU IPC request ${payload.type} rejected: too many in-flight requests`));
                 return;
             }
             const id = randomUUID();

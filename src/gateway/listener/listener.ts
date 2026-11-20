@@ -18,6 +18,23 @@ import { hashIp } from "@spacebar/util/util/IpHash";
 
 const guildChannels = new WeakMap<object, Map<string, Set<string>>>();
 const guildWork = new WeakMap<object, Map<string, Promise<void>>>();
+const transactionWindows = new WeakMap<string[], { seen: Set<string>; cursor: number }>();
+
+function seenTransaction(socket: WebSocket, id: string) {
+    const slots = (socket.recentTransactions ??= []);
+    let window = transactionWindows.get(slots);
+    if (!window) {
+        window = { seen: new Set(slots), cursor: slots.length % 100 };
+        transactionWindows.set(slots, window);
+    }
+    if (window.seen.has(id)) return true;
+    const evicted = slots[window.cursor];
+    if (evicted !== undefined) window.seen.delete(evicted);
+    slots[window.cursor] = id;
+    window.seen.add(id);
+    window.cursor = (window.cursor + 1) % 100;
+    return false;
+}
 const channelReads = new Map<string, Promise<ListenedChannel[]>>();
 const threadReads = new Map<string, Promise<ListenedChannel[]>>();
 const threadTypes = [ChannelType.GUILD_NEWS_THREAD, ChannelType.GUILD_PUBLIC_THREAD, ChannelType.GUILD_PRIVATE_THREAD];
@@ -459,11 +476,7 @@ async function consumeEvent(this: WebSocket, opts: EventOpts): Promise<void> {
     // console.log("event", event);
 
     // deduplicate gateway messages
-    if (opts.transaction_id) {
-        if (this.recentTransactions.includes(opts.transaction_id)) return;
-        this.recentTransactions.push(opts.transaction_id);
-        if (this.recentTransactions.length > 100) this.recentTransactions = this.recentTransactions.slice(1);
-    }
+    if (opts.transaction_id && seenTransaction(this, opts.transaction_id)) return;
 
     // special codes
     switch (event) {
