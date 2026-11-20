@@ -50,10 +50,13 @@ router.post(
             after?: Cursor;
         };
 
-        const members = await Member.find({
-            where: { guild_id },
-            relations: { user: true, roles: true },
-        });
+        const members = await Member.createQueryBuilder("member")
+            .select("member")
+            .addSelect(["user.username", "user.global_name"])
+            .leftJoin("member.user", "user")
+            .where("member.guild_id = :guild_id", { guild_id })
+            .getMany();
+        await Member.attachRoles(members);
 
         const joined = (m: Member) => new Date(m.joined_at).getTime();
         const names = (m: Member) => [m.nick, m.user.username, m.user.global_name].filter(Boolean).map((n) => `${n}`.toLowerCase());

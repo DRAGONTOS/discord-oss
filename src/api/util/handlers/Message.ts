@@ -786,7 +786,7 @@ export async function syncCrosspostCopies(source: Message, deleted = false) {
                 source_id: source.id,
             }),
         },
-        relations: { channel: true, webhook: true },
+        relations: { channel: true },
     });
     for (const copy of copies.filter((c) => c.flags & Number(MessageFlags.FLAGS.IS_CROSSPOST))) {
         if (deleted) {

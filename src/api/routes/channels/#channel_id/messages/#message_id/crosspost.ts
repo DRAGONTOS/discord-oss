@@ -47,35 +47,37 @@ router.post(
         const followers = await Webhook.find({
             where: { type: WebhookType.ChannelFollower, source_channel_id: channel_id },
         });
-        for (const webhook of followers) {
-            try {
-                const copy = await handleMessage({
-                    id: Snowflake.generate(),
-                    content: message.content,
-                    embeds: message.embeds ?? [],
-                    sticker_ids: message.sticker_items?.map((s) => s.id),
-                    type: MessageType.DEFAULT,
-                    flags: Number(MessageFlags.FLAGS.IS_CROSSPOST),
-                    pinned: false,
-                    webhook_id: webhook.id,
-                    username: webhook.name,
-                    channel_id: webhook.channel_id,
-                    message_reference: { message_id: message.id, channel_id, guild_id: channel.guild_id },
-                    allowed_mentions: { parse: [] },
-                    attachments: [],
-                    timestamp: new Date(),
-                });
-                await copy.save();
-                await emitEvent({
-                    event: "MESSAGE_CREATE",
-                    channel_id: webhook.channel_id,
-                    data: copy.toJSON(),
-                } satisfies MessageCreateEvent);
-                postHandleMessage(copy).catch((e) => console.error("[Crosspost] post-message handler failed", e));
-            } catch (e) {
-                console.error(`[Crosspost] failed to deliver ${message.id} to webhook ${webhook.id}`, e);
-            }
-        }
+        await Promise.all(
+            followers.map(async (webhook) => {
+                try {
+                    const copy = await handleMessage({
+                        id: Snowflake.generate(),
+                        content: message.content,
+                        embeds: message.embeds ?? [],
+                        sticker_ids: message.sticker_items?.map((s) => s.id),
+                        type: MessageType.DEFAULT,
+                        flags: Number(MessageFlags.FLAGS.IS_CROSSPOST),
+                        pinned: false,
+                        webhook_id: webhook.id,
+                        username: webhook.name,
+                        channel_id: webhook.channel_id,
+                        message_reference: { message_id: message.id, channel_id, guild_id: channel.guild_id },
+                        allowed_mentions: { parse: [] },
+                        attachments: [],
+                        timestamp: new Date(),
+                    });
+                    await copy.save();
+                    await emitEvent({
+                        event: "MESSAGE_CREATE",
+                        channel_id: webhook.channel_id,
+                        data: copy.toJSON(),
+                    } satisfies MessageCreateEvent);
+                    postHandleMessage(copy).catch((e) => console.error("[Crosspost] post-message handler failed", e));
+                } catch (e) {
+                    console.error(`[Crosspost] failed to deliver ${message.id} to webhook ${webhook.id}`, e);
+                }
+            }),
+        );
 
         return res.json(Message.prototype.withSignedAttachments.call(message.toJSON(), requestSignatureData(req)));
     },

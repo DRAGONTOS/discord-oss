@@ -95,7 +95,7 @@ export function sweepImageFiles(until = Infinity) {
 export function startImageFileSweeper() {
     if (workerTimer || stopping) return workerTimer;
     const initial = setTimeout(() => sweepImageFiles(), 10_000);
-    workerTimer = setInterval(() => sweepImageFiles(), GRACE_SECONDS * 1000);
+    workerTimer = setInterval(() => sweepImageFiles(Date.now() + 1000), GRACE_SECONDS * 1000);
     ProcessLifecycle.eventEmitter.once("stopping", async () => {
         stopping = true;
         clearTimeout(initial);

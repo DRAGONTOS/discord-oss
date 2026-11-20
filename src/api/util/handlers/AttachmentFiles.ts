@@ -67,7 +67,7 @@ export function sweepAttachmentFiles(until = Infinity) {
 export function startAttachmentFileSweeper() {
     if (workerTimer || stopping) return workerTimer;
     const initial = setTimeout(() => sweepAttachmentFiles(), 10_000);
-    workerTimer = setInterval(() => sweepAttachmentFiles(), GRACE_SECONDS * 1000);
+    workerTimer = setInterval(() => sweepAttachmentFiles(Date.now() + 1000), GRACE_SECONDS * 1000);
     ProcessLifecycle.eventEmitter.once("stopping", async () => {
         stopping = true;
         clearTimeout(initial);

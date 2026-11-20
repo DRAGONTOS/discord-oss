@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { Member } from "@spacebar/database";
 import { In } from "typeorm";
-import { DiscordApiErrors } from "@spacebar/util";
+import { DiscordApiErrors, emitEvent, GuildMemberUpdateEvent } from "@spacebar/util";
 import { authorizeMemberRoleChanges } from "@spacebar/api/util/utility/memberRoleAuthorization";
 
 const router = Router({ mergeParams: true });
@@ -19,8 +19,16 @@ router.patch("/", route({ permission: "MANAGE_ROLES" }), async (req: Request, re
     await authorizeMemberRoleChanges(req.user_id, guild_id, [], [role_id]);
 
     const members = member_ids.length ? await Member.find({ where: { guild_id, id: In(member_ids) }, relations: { roles: true } }) : [];
-    const add = members.filter((member) => !member.roles.some((role) => role.id === role_id));
-    for (const member of add) await Member.addRole(member.id, guild_id, role_id);
+    const add = new Set(members.filter((member) => !member.roles.some((role) => role.id === role_id)).map((member) => member.id));
+    if (add.size) {
+        await Member.getRepository()
+            .manager.createQueryBuilder()
+            .insert()
+            .into("member_roles")
+            .values([...add].map((id) => ({ index: members.find((member) => member.id === id)!.index, role_id })))
+            .orIgnore()
+            .execute();
+    }
 
     const updated = members.length
         ? await Member.find({
@@ -28,6 +36,22 @@ router.patch("/", route({ permission: "MANAGE_ROLES" }), async (req: Request, re
               relations: { roles: true, user: true },
           })
         : [];
+    await Promise.all(
+        updated
+            .filter((member) => add.has(member.id))
+            .map((member) =>
+                emitEvent({
+                    event: "GUILD_MEMBER_UPDATE",
+                    data: {
+                        ...member.toPublicMember(),
+                        guild_id,
+                        user: member.user.toPublicUser(),
+                        roles: member.roles.map((x) => x.id).filter((id) => id !== guild_id),
+                    },
+                    guild_id,
+                } satisfies GuildMemberUpdateEvent),
+            ),
+    );
     res.json(
         Object.fromEntries(
             updated.map((m) => [

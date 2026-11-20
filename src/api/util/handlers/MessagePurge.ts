@@ -57,7 +57,7 @@ export function purgeDeletedChannels(until = Infinity) {
 
 export function startMessagePurger() {
     if (workerTimer || stopping) return workerTimer;
-    const run = () => purgeDeletedChannels().catch((error) => console.error("[MessagePurge] failed to purge messages of deleted channels", error));
+    const run = () => purgeDeletedChannels(Date.now() + 1000).catch((error) => console.error("[MessagePurge] failed to purge messages of deleted channels", error));
     const initial = setTimeout(run, 5_000);
     workerTimer = setInterval(run, 60_000);
     ProcessLifecycle.eventEmitter.once("stopping", async () => {

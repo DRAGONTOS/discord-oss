@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { ReadState } from "@spacebar/database";
 import { AckBulkSchema } from "@spacebar/schemas";
-import { emitEvent, MessageAckEvent } from "@spacebar/util";
+import { emitEvent, MessageAckEvent, Snowflake } from "@spacebar/util";
 
 const router = Router({ mergeParams: true });
 
@@ -22,35 +22,30 @@ router.post(
 
         // TODO: what is read_state_type ?
 
-        await Promise.all([
-            // for every new state
-            ...body.read_states.map(async (x) => {
-                // find an existing one
-                const ret =
-                    (await ReadState.findOne({
-                        where: {
-                            user_id: req.user_id,
-                            channel_id: x.channel_id,
-                        },
-                    })) ??
-                    // if it doesn't exist, create it (not a promise)
-                    ReadState.create({
+        if (body.read_states.length) {
+            await ReadState.createQueryBuilder()
+                .insert()
+                .values(
+                    body.read_states.map((x) => ({
+                        id: Snowflake.generate(),
                         user_id: req.user_id,
                         channel_id: x.channel_id,
-                    });
-
-                ret.last_message_id = x.message_id;
-                //It's a little more complicated than this but this'll do
-                ret.mention_count = 0;
-
-                await ret.save();
-                await emitEvent({
+                        last_message_id: x.message_id,
+                        mention_count: 0,
+                    })),
+                )
+                .orUpdate(["last_message_id", "mention_count"], ["user_id", "channel_id"])
+                .execute();
+        }
+        await Promise.all(
+            body.read_states.map((x) =>
+                emitEvent({
                     event: "MESSAGE_ACK",
                     user_id: req.user_id,
                     data: { channel_id: x.channel_id, message_id: x.message_id, version: Date.now() },
-                } satisfies MessageAckEvent);
-            }),
-        ]);
+                } satisfies MessageAckEvent),
+            ),
+        );
 
         return res.sendStatus(204);
     },

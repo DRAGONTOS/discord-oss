@@ -1,5 +1,6 @@
 import { isSqlite } from "@spacebar/database/Sql";
 import { enforceNameAutomod } from "../utility/instanceAutomod";
+import { channelViewChecker, loadAudienceMembers } from "../utility/notifications";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 import { In } from "typeorm";
 import { AuditLog, Channel, Member, Message, ThreadMember, ThreadMemberFlags } from "@spacebar/database";
@@ -206,15 +207,9 @@ export async function onThreadMessage(thread: Channel, user_id: string, mentione
         const permission = await getPermission(user_id, thread.guild_id, thread.parent_id);
         if (!permission.has("MANAGE_THREADS") || !permission.mfaSatisfied("MANAGE_THREADS")) return;
     }
-    const members = await Member.find({
-        where: { guild_id: thread.guild_id, id: In(candidates) },
-        select: { id: true },
-    });
-    for (const { id } of members) {
-        const permission = await getPermission(id, thread.guild_id, thread.parent_id).catch(() => undefined);
-        if (!permission?.has("VIEW_CHANNEL")) continue;
-        await ThreadMember.join(thread, id, ThreadMemberFlags.NONE);
-    }
+    const canView = await channelViewChecker(thread);
+    const audience = await loadAudienceMembers(thread.guild_id, { all: false, ids: candidates, roles: [] });
+    await Promise.all(audience.filter((member) => canView(member)).map((member) => ThreadMember.join(thread, member.id, ThreadMemberFlags.NONE)));
 }
 
 let stopping = false;

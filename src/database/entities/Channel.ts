@@ -1,5 +1,5 @@
 import { HTTPError } from "lambert-server/HTTPError";
-import { Column, Entity, EntityManager, Index, IsNull, JoinColumn, ManyToOne, OneToMany } from "typeorm";
+import { Column, Entity, EntityManager, In, Index, IsNull, JoinColumn, ManyToOne, OneToMany } from "typeorm";
 import { DmChannelDTO } from "../../util/dtos";
 import { ChannelCreateEvent, ChannelRecipientRemoveEvent, ThreadCreateEvent, ThreadMembersUpdateEvent } from "../../util/interfaces";
 import { InvisibleCharacters, Snowflake, emitEvent, getPermission, Permissions, Config, DiscordApiErrors, FieldErrors } from "@spacebar/util/util";
@@ -608,20 +608,17 @@ export class Channel extends BaseClass {
                 select: { channel_ordering: true },
             });
 
-        const channels = await Promise.all(guild.channel_ordering.map((id) => Channel.findOne({ where: { id } })));
+        const ids = guild.channel_ordering;
+        if (!ids.length) return [];
+        const channels = await Channel.find({ where: { id: In(ids) } });
+        const byId = new Map(channels.map((channel) => [channel.id, channel]));
 
-        return channels
-            .filter((channel) => channel !== null)
-            .reduce(
-                (r, v) => {
-                    v = v as Channel;
-
-                    v.position = (guild as Guild).channel_ordering.indexOf(v.id);
-                    r[v.position] = v;
-                    return r;
-                },
-                [] as Array<Channel>,
-            );
+        return ids.flatMap((id, position) => {
+            const channel = byId.get(id);
+            if (!channel) return [];
+            channel.position = position;
+            return [channel];
+        });
     }
 
     isDm() {
