@@ -19,9 +19,20 @@ const load = (channels) => {
             builder.type = params.type;
             return builder;
         },
+        groupBy: () => builder,
+        having: () => builder,
         getOne: async () => {
-            const [mine, theirs] = joins.slice(-2).map((join) => Object.values(join.params)[0]);
-            return channels.find((channel) => channel.type === builder.type && channel.recipients.includes(mine) && channel.recipients.includes(theirs)) ?? null;
+            const [mine, theirs] = joins.slice(-2).map((join) => (join.params ? Object.values(join.params)[0] : undefined));
+            const countsAll = joins.some((join) => !join.params);
+            return (
+                channels.find(
+                    (channel) =>
+                        channel.type === builder.type &&
+                        channel.recipients.includes(mine) &&
+                        (theirs === undefined || channel.recipients.includes(theirs)) &&
+                        (!countsAll || channel.recipients.length === 1),
+                ) ?? null
+            );
         },
     };
     const module = { exports: {} };
@@ -64,8 +75,20 @@ test("the DM lookup returns the existing one to one DM and never a group DM", as
     assert.deepEqual(await lookup(route, "2", "1"), { id: "d", recipients: ["1"] });
 });
 
-test("the DM lookup answers Unknown Channel without a DM, for yourself and for bad ids", async () => {
-    const route = load([{ id: "g", type: 3, recipients: ["1", "3"] }]);
+test("the DM lookup finds your note to self channel without returning another DM", async () => {
+    const route = load([
+        { id: "d", type: 1, recipients: ["1", "2"] },
+        { id: "self", type: 1, recipients: ["1"] },
+        { id: "g", type: 3, recipients: ["1", "2", "3"] },
+    ]);
+    assert.deepEqual(await lookup(route, "1", "1"), { id: "self", recipients: ["1"] });
+});
+
+test("the DM lookup answers Unknown Channel without a DM, without a self DM and for bad ids", async () => {
+    const route = load([
+        { id: "g", type: 3, recipients: ["1", "3"] },
+        { id: "d", type: 1, recipients: ["1", "2"] },
+    ]);
     await assert.rejects(lookup(route, "1", "3"), UNKNOWN_CHANNEL);
     await assert.rejects(lookup(route, "1", "1"), UNKNOWN_CHANNEL);
     await assert.rejects(lookup(route, "1", "abc"), UNKNOWN_CHANNEL);

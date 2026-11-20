@@ -24,17 +24,20 @@ router.get(
             where: { user_id: req.user_id, closed: false },
             relations: { channel: { recipients: true } },
         });
-        const userIds = [...new Set(recipients.flatMap((r) => r.channel.recipients?.map((x) => x.user_id) ?? []))].filter((id) => id !== req.user_id);
+        const userIds = [...new Set(recipients.flatMap((r) => r.channel.recipients?.map((x) => x.user_id) ?? []))];
         const users = new Map((userIds.length ? await DmChannelDTO.users(userIds) : []).map((u) => [u.id, u]));
         res.json(
             await Promise.all(
-                recipients.map(async (r) => ({
-                    ...(await DmChannelDTO.from(r.channel, [req.user_id], undefined, users)),
-                    is_spam: false,
-                    is_message_request: !!r.message_request_timestamp,
-                    is_message_request_timestamp: r.message_request_timestamp?.toISOString() ?? null,
-                    ...(r.channel.type === ChannelType.GROUP_DM && { blocked_user_warning_dismissed: !!r.blocked_user_warning_dismissed }),
-                })),
+                recipients.map(async (r) => {
+                    const isSelfDm = r.channel.type === ChannelType.DM && r.channel.recipients?.length === 1 && r.channel.recipients[0].user_id === req.user_id;
+                    return {
+                        ...(await DmChannelDTO.from(r.channel, isSelfDm ? [] : [req.user_id], undefined, users)),
+                        is_spam: false,
+                        is_message_request: !!r.message_request_timestamp,
+                        is_message_request_timestamp: r.message_request_timestamp?.toISOString() ?? null,
+                        ...(r.channel.type === ChannelType.GROUP_DM && { blocked_user_warning_dismissed: !!r.blocked_user_warning_dismissed }),
+                    };
+                }),
             ),
         );
     },

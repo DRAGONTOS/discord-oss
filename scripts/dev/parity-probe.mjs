@@ -542,10 +542,22 @@ await check("dms", "bulk leave group dms", async () => {
         note: `${r.status} left=${!still.some((c) => c.id === gdm.body.id)} dm=${kept.status} types=${msgs.map((m) => m.type)}`,
     };
 });
-await check("dms", "dm lookup by user", async () => {
+await check("dms", "dm lookup by user and note to self", async () => {
     const found = await call("GET", `/users/@me/dms/${them.id}`, A);
+    const created = await call("POST", "/users/@me/channels", A, { recipients: [me.id] });
     const self = await call("GET", `/users/@me/dms/${me.id}`, A);
-    return { ok: found.status === 200 && found.body?.id === dm.id && self.status === 404, note: `${found.status} ${found.body?.id} self=${self.status}` };
+    const list = await call("GET", "/users/@me/channels", A);
+    const entry = list.body?.find((channel) => channel.id === created.body?.id);
+    return {
+        ok:
+            found.status === 200 &&
+            found.body?.id === dm.id &&
+            created.status === 200 &&
+            self.status === 200 &&
+            self.body?.id === created.body?.id &&
+            entry?.recipients?.some((user) => user.id === me.id),
+        note: `${found.status} ${found.body?.id} self=${self.status} listed=${!!entry}`,
+    };
 });
 await check("dms", "dm call ring", async () => {
     const r = await call("POST", `/channels/${dm.id}/call/ring`, A, { recipients: null });
