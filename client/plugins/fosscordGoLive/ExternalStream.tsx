@@ -6,6 +6,34 @@ import type { RenderModalProps } from "@vencord/discord-types";
 import { ChannelStore, Menu, Modal, Popout, React, RestAPI, SelectedChannelStore, showToast, TextInput } from "@webpack/common";
 
 import { Forms } from "../fosscordCore/compat";
+import { Button } from "../fosscordCore/ui";
+
+function openChoiceModal(share?: () => void) {
+    openModal((props) => (
+        <Modal {...props} size="sm" title="Start streaming">
+            <Forms.FormText>Choose how you want to stream to this voice channel.</Forms.FormText>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <Button
+                    disabled={!share}
+                    onClick={() => {
+                        props.onClose();
+                        share?.();
+                    }}
+                >
+                    Screen share
+                </Button>
+                <Button
+                    onClick={() => {
+                        props.onClose();
+                        openStreamKeyModal();
+                    }}
+                >
+                    Stream through external tools
+                </Button>
+            </div>
+        </Modal>
+    ));
+}
 
 interface StreamKeyInfo {
     has_key: boolean;
@@ -65,7 +93,12 @@ export function GoLiveButton({ plainButton, anchorButton, share, streaming, disa
 }
 
 const SafeGoLiveButton = ErrorBoundary.wrap(GoLiveButton, {
-    fallback: ({ wrappedProps }) => <>{wrappedProps.plainButton}</>,
+    fallback: ({ wrappedProps }) =>
+        React.isValidElement(wrappedProps.plainButton)
+            ? React.cloneElement(wrappedProps.plainButton as React.ReactElement<{ onClick?: () => void }>, {
+                  onClick: () => openChoiceModal(wrappedProps.share),
+              })
+            : wrappedProps.plainButton,
 });
 
 export function renderGoLiveButton(props: GoLiveButtonProps) {
