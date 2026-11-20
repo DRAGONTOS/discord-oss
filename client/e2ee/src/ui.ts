@@ -127,6 +127,8 @@ const escape = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCode
 
 const currentChannel = () => /^\/channels\/@me\/(\d+)/.exec(location.pathname)?.[1] ?? null;
 
+const CONTENT_PREFIX = "message-content-";
+
 const memberName = (m: ChannelMember) => m.global_name || m.username;
 
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -218,6 +220,9 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
         retry: () => refresh(),
     });
     let scheduled = false;
+    const changedIds = new Set<string>();
+    let toolbarChannel: string | null = null;
+    let toolbarNode: HTMLElement | null = null;
     let tooltip: HTMLElement | null = null;
     let backupPromptDismissed = false;
     let requiredPasswordOpen: (() => void) | null = null;
@@ -1262,14 +1267,21 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
         return false;
     };
 
-    const decorateMessages = () => {
-        for (const [id, info] of states) {
-            const content = document.getElementById(`message-content-${id}`);
+    const decorateMessages = (ids: Iterable<string>) => {
+        for (const id of ids) {
+            const info = states.get(id);
+            if (!info) continue;
+            const content = document.getElementById(CONTENT_PREFIX + id);
             if (!content) continue;
             if (info.state === "decrypted") delete content.dataset.fe2eeState;
             else if (content.dataset.fe2eeState !== info.state) content.dataset.fe2eeState = info.state;
             content.querySelectorAll(".fe2ee-lock, .fe2ee-unlock").forEach((el) => el.remove());
         }
+    };
+
+    const changed = (messageId?: string) => {
+        if (messageId) changedIds.add(messageId);
+        refresh();
     };
 
     const headerLabel = (channelId: string) => {
@@ -1283,9 +1295,17 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
 
     const decorateHeader = (channelId: string | null) => {
         const existing = document.querySelector<HTMLButtonElement>(".fe2ee-toggle");
-        if (!channelId) return existing?.remove();
-        const toolbars = [...document.querySelectorAll<HTMLElement>('[class*="toolbar_"]')];
-        const toolbar = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
+        if (!channelId) {
+            toolbarChannel = null;
+            toolbarNode = null;
+            return existing?.remove();
+        }
+        if (channelId !== toolbarChannel || !toolbarNode?.isConnected) {
+            toolbarChannel = channelId;
+            const toolbars = [...document.querySelectorAll<HTMLElement>('[class*="toolbar_"]')];
+            toolbarNode = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0] ?? null;
+        }
+        const toolbar = toolbarNode;
         if (!toolbar) return;
         const on = engine.isEncrypted(channelId);
         const list = members?.channelId === channelId ? members.list : [];
@@ -1387,7 +1407,9 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
             const channelId = currentChannel();
             if (bootstrapped && channelId && engine.userId && members?.channelId !== channelId) loadMembers(channelId);
             if (tooltip && !document.querySelector(".fe2ee-toggle:hover, .fe2ee-lock:hover")) hideTooltip();
-            decorateMessages();
+            const ids = [...changedIds];
+            changedIds.clear();
+            decorateMessages(ids);
             decorateHeader(channelId);
             decorateNotice(channelId);
             const needsPassword = bootstrapped && !failure && engine.trustsServer && engine.locked && !!channelId && engine.isEncrypted(channelId);
@@ -1407,7 +1429,18 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
 
     const start = () => {
         mount();
-        new MutationObserver(refresh).observe(document.body, { childList: true, subtree: true });
+        for (const id of states.keys()) changedIds.add(id);
+        new MutationObserver((records) => {
+            for (const record of records) {
+                for (const node of record.addedNodes) {
+                    if (node.nodeType !== 1) continue;
+                    const el = node as HTMLElement;
+                    if (el.id.startsWith(CONTENT_PREFIX)) changedIds.add(el.id.slice(CONTENT_PREFIX.length));
+                    el.querySelectorAll(`[id^="${CONTENT_PREFIX}"]`).forEach((child) => changedIds.add(child.id.slice(CONTENT_PREFIX.length)));
+                }
+            }
+            refresh();
+        }).observe(document.body, { childList: true, subtree: true });
         engine.onChange(refresh);
         refresh();
     };
@@ -1417,6 +1450,7 @@ export const createUi = ({ engine, ready, states, enableChannel, link, verifyPas
 
     return {
         refresh,
+        changed,
         showError,
         showUnlock,
         unlockSnoozed,

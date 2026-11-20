@@ -354,6 +354,7 @@ export class Engine {
     private lookupTimer: ReturnType<typeof setTimeout> | null = null;
     private keyBatch: { ids: Set<string>; users: Promise<Record<string, ServerUserKeys>> } | null = null;
     private storedKeys = new BoundedMap<string, EnvelopeBackupKey>(PLAINTEXT_CACHE_SIZE);
+    private safetyNumbers = new BoundedMap<string, Promise<string | null>>(256);
     private backfilling = false;
     private wiped = false;
     private freshIdentity: OkpJwk | null = null;
@@ -540,6 +541,7 @@ export class Engine {
 
     private async trust(key: string) {
         if (this.trustedKey === key) return;
+        this.safetyNumbers.clear();
         await this.rememberIdentity(this.trustedKey);
         this.trustedKey = key;
         await this.store!.set("trusted-identity", key);
@@ -738,6 +740,7 @@ export class Engine {
         this.devices = [];
         this.plaintext.clear();
         this.directory.clear();
+        this.safetyNumbers.clear();
         this.members.clear();
         this.emit();
     }
@@ -1013,6 +1016,7 @@ export class Engine {
                 this.backup = null;
                 this.holdPassword(password);
                 this.directory.clear();
+                this.safetyNumbers.clear();
             }),
         );
         await this.refresh();
@@ -1095,8 +1099,9 @@ export class Engine {
     }
 
     async keysFor(userIds: string[], force = false): Promise<DirectoryEntry[]> {
+        const ids = [...new Set(userIds)];
         const pending = new Map<string, Promise<DirectoryEntry>>();
-        for (const id of new Set(userIds)) {
+        for (const id of ids) {
             let entry = force ? undefined : this.directory.get(id);
             if (!entry) {
                 entry = this.queryKeys(id).then((keys) => this.verifyEntry(id, keys));
@@ -1105,9 +1110,15 @@ export class Engine {
             }
             pending.set(id, entry);
         }
-        const entries = await Promise.all(userIds.map((id) => pending.get(id)!));
-        const stale = entries.filter((e) => Date.now() - e.fetchedAt > DIRECTORY_TTL_MS).map((e) => e.userId);
-        return stale.length && !force ? this.keysFor(userIds, true) : entries;
+        const resolved = await Promise.all(ids.map((id) => pending.get(id)!));
+        const byId = new Map(ids.map((id, index) => [id, resolved[index]]));
+        if (!force) {
+            const stale = resolved.filter((entry) => Date.now() - entry.fetchedAt > DIRECTORY_TTL_MS).map((entry) => entry.userId);
+            if (stale.length) {
+                for (const entry of await this.keysFor(stale, true)) byId.set(entry.userId, entry);
+            }
+        }
+        return userIds.map((id) => byId.get(id)!);
     }
 
     private async verifyEntry(userId: string, keys: ServerUserKeys): Promise<DirectoryEntry> {
@@ -1207,6 +1218,7 @@ export class Engine {
         contact.verifiedAt = Date.now();
         await this.saveContacts();
         this.directory.delete(userId);
+        this.safetyNumbers.clear();
         this.emit();
         this.pushTrust([userId]).catch((error) => console.error("[e2ee] couldn't sync the accepted safety number", error));
     }
@@ -1464,17 +1476,27 @@ export class Engine {
         const theirs = this.contacts[userId]?.pendingKey ?? entry.identityKey;
         const mine = this.trustedKey;
         if (!theirs || !mine) return null;
-        const part = async (id: string, key: string) => {
-            let digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([0, 0, ...fromB64u(key), ...utf8(id)])));
-            for (let i = 0; i < 5200; i++) digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([...digest, ...fromB64u(key)])));
-            let out = "";
-            for (let i = 0; i < 30; i += 5) {
-                const chunk = digest.subarray(i, i + 5).reduce((acc, byte) => acc * 256 + byte, 0);
-                out += String(chunk % 100000).padStart(5, "0");
-            }
-            return out;
-        };
-        const [own, other] = await Promise.all([part(this.userId, mine), part(userId, theirs)]);
-        return own < other ? own + other : other + own;
+        const cacheKey = `${this.userId}:${userId}:${mine}:${theirs}`;
+        let pending = this.safetyNumbers.get(cacheKey);
+        if (!pending) {
+            pending = (async () => {
+                const part = async (id: string, key: string) => {
+                    const raw = fromB64u(key);
+                    let digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([0, 0, ...raw, ...utf8(id)])));
+                    for (let i = 0; i < 5200; i++) digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([...digest, ...raw])));
+                    let out = "";
+                    for (let i = 0; i < 30; i += 5) {
+                        const chunk = digest.subarray(i, i + 5).reduce((acc, byte) => acc * 256 + byte, 0);
+                        out += String(chunk % 100000).padStart(5, "0");
+                    }
+                    return out;
+                };
+                const [own, other] = await Promise.all([part(this.userId, mine), part(userId, theirs)]);
+                return own < other ? own + other : other + own;
+            })();
+            pending.catch(() => this.safetyNumbers.delete(cacheKey));
+            this.safetyNumbers.set(cacheKey, pending);
+        }
+        return pending;
     }
 }

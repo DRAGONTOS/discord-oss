@@ -1,5 +1,6 @@
 import { Aes256Gcm, CipherSuite, DhkemX25519HkdfSha256, HkdfSha256 } from "@hpke/core";
 import { Bytes, fromB64u, sha256, toB64u, utf8 } from "./bytes";
+import { BoundedMap } from "./boundedMap";
 
 export const ALGORITHM = "x25519-hpke-aes256gcm-ed25519";
 
@@ -19,12 +20,26 @@ export const exportPublic = async (key: CryptoKey) => toB64u(await subtle().expo
 
 export const sign = async (key: CryptoKey, message: string) => toB64u(await subtle().sign({ name: "Ed25519" }, key, utf8(message)));
 
+const VERIFY_KEY_CACHE_SIZE = 512;
+const verifyKeys = new BoundedMap<string, Promise<CryptoKey>>(VERIFY_KEY_CACHE_SIZE);
+
+const verifyKey = (publicKey: string, raw: Bytes, usage: KeyUsage) => {
+    const cacheKey = `${usage}:${publicKey}`;
+    let pending = verifyKeys.get(cacheKey);
+    if (!pending) {
+        pending = subtle().importKey("raw", raw, { name: "Ed25519" }, false, [usage]);
+        pending.catch(() => verifyKeys.delete(cacheKey));
+        verifyKeys.set(cacheKey, pending);
+    }
+    return pending;
+};
+
 export const verify = async (publicKey: string, message: string, signature: string) => {
     try {
         const raw = fromB64u(publicKey);
         const sig = fromB64u(signature);
         if (raw.length !== 32 || sig.length !== 64) return false;
-        const key = await subtle().importKey("raw", raw, { name: "Ed25519" }, false, ["verify"]);
+        const key = await verifyKey(publicKey, raw, "verify");
         return await subtle().verify({ name: "Ed25519" }, key, sig, utf8(message));
     } catch {
         return false;

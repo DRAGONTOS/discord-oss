@@ -50,7 +50,7 @@ export interface HookContext {
     states: Map<string, { state: MessageState; reason?: string }>;
     failClosed: () => boolean;
     isReady: () => boolean;
-    onState: () => void;
+    onState: (messageId?: string) => void;
     updateRecord: (message: RawMessage) => void;
     onCredentials: (path: string, body: { password?: unknown; new_password?: unknown }, response: unknown) => void;
     onLogout: () => void;
@@ -235,14 +235,14 @@ export const createHooks = (ctx: HookContext) => {
                 }
             })().finally(() => inflight.delete(key));
             inflight.set(key, pending);
-            return pending.then(() => ctx.onState());
+            return pending.then(() => ctx.onState(message.id));
         }
         return pending.then(() => {
             const again = engine.cached(message);
             const state = states.get(message.id)?.state;
             if (again) show(message, again);
             else message.content = contentFor(state, message.content, engine.trustsServer);
-            ctx.onState();
+            ctx.onState(message.id);
         });
     };
 
@@ -257,7 +257,7 @@ export const createHooks = (ctx: HookContext) => {
             const after = states.get(copy.id)?.state;
             if (after === before && after !== "pending") return;
             redispatch(copy);
-            ctx.onState();
+            ctx.onState(copy.id);
         });
     };
 

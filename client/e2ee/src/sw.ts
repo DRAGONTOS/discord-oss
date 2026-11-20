@@ -44,6 +44,7 @@ const ASK_TIMEOUT_MS = 5000;
 const entries = new BoundedMap<string, FileEntry>(2000);
 const files = new Map<string, { size: number; blob: Promise<Blob> }>();
 const posters = new BoundedMap<string, Promise<Blob | null>>(64);
+let fileBytes = 0;
 
 const ask = async <T>(message: Record<string, unknown>, clientId = "") => {
     const own = clientId ? await sw.clients.get(clientId) : undefined;
@@ -80,13 +81,20 @@ const plaintext = (path: string, entry: FileEntry) => {
         if (out.size !== entry.size) throw new Error("decrypted size doesn't match");
         return out;
     })();
+    const previous = files.get(path);
+    if (previous) fileBytes -= previous.size;
     files.set(path, { size: entry.size, blob });
-    blob.catch(() => files.delete(path));
-    let total = [...files.values()].reduce((sum, file) => sum + file.size, 0);
+    fileBytes += entry.size;
+    blob.catch(() => {
+        const file = files.get(path);
+        if (!file) return;
+        files.delete(path);
+        fileBytes -= file.size;
+    });
     for (const [key, file] of files) {
-        if (total <= CACHE_BYTES || key === path) break;
+        if (fileBytes <= CACHE_BYTES || key === path) break;
         files.delete(key);
-        total -= file.size;
+        fileBytes -= file.size;
     }
     return blob;
 };

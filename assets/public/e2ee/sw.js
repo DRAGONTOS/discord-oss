@@ -85,6 +85,7 @@ ${final ? 1 : 0}`);
   var entries = new BoundedMap(2000);
   var files = new Map;
   var posters = new BoundedMap(64);
+  var fileBytes = 0;
   var ask = async (message, clientId = "") => {
     const own = clientId ? await sw.clients.get(clientId) : undefined;
     const windows = own ? [own] : await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -123,14 +124,23 @@ ${final ? 1 : 0}`);
         throw new Error("decrypted size doesn't match");
       return out;
     })();
+    const previous = files.get(path);
+    if (previous)
+      fileBytes -= previous.size;
     files.set(path, { size: entry.size, blob });
-    blob.catch(() => files.delete(path));
-    let total = [...files.values()].reduce((sum, file) => sum + file.size, 0);
+    fileBytes += entry.size;
+    blob.catch(() => {
+      const file = files.get(path);
+      if (!file)
+        return;
+      files.delete(path);
+      fileBytes -= file.size;
+    });
     for (const [key, file] of files) {
-      if (total <= CACHE_BYTES || key === path)
+      if (fileBytes <= CACHE_BYTES || key === path)
         break;
       files.delete(key);
-      total -= file.size;
+      fileBytes -= file.size;
     }
     return blob;
   };

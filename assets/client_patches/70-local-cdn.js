@@ -40,20 +40,35 @@
   ];
   const downgraded =
     /^(?:http:)?\/\/((?:[\w-]+\.)*(?:discord\.com|discordapp\.com|discordapp\.net|discord\.gg|discord\.media|dis\.gd|discordstatus\.com))(?=[/:?#]|$)/i;
-  const rewrite = (value) => {
-    if (typeof value !== "string") return value;
+  const cached = (transform, limit = 512) => {
+    const values = new Map();
+    return (value) => {
+      if (typeof value !== "string") return value;
+      const hit = values.get(value);
+      if (hit !== undefined) return hit;
+      const result = transform(value);
+      if (values.size >= limit) values.delete(values.keys().next().value);
+      values.set(value, result);
+      return result;
+    };
+  };
+  const rewriteValue = (value) => {
+    if (value.indexOf("//") === -1) return value;
     const local = instanceUrl(value);
     return rules.reduce((acc, [pattern, to]) => acc.replace(pattern, to), local);
   };
-  const link = (value) =>
-    typeof value === "string" ? rewrite(value.replace(downgraded, "https://$1")) : value;
-  const rewriteCss = (value) =>
-    typeof value === "string"
-      ? value.replace(
+  const rewrite = cached(rewriteValue);
+  const linkValue = (value) =>
+    value.indexOf("//") === -1 ? value : rewriteValue(value.replace(downgraded, "https://$1"));
+  const link = cached(linkValue);
+  const rewriteCssValue = (value) =>
+    value.indexOf("url(") === -1 || value.indexOf("//") === -1
+      ? value
+      : value.replace(
           /url\((["']?)((?:https?:)?\/\/[^"')]+)\1\)/g,
           (all, quote, url) => `url(${quote}${rewrite(url)}${quote})`,
-        )
-      : value;
+        );
+  const rewriteCss = cached(rewriteCssValue);
 
   const fetch = window.fetch;
   window.fetch = function (input, init) {

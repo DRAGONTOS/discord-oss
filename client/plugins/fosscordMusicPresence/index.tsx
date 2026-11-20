@@ -67,6 +67,7 @@ let lastFmPolling = false;
 let lastActivity = "";
 let lastStart: { key: string; start: number } | null = null;
 let renderId = 0;
+let running = false;
 
 const bridge = (): MusicBridge | undefined => (window as unknown as { Librecord?: { music?: MusicBridge } }).Librecord?.music;
 
@@ -103,6 +104,22 @@ const spotifyImageKey = (url: string | undefined) => {
 
 const accountsOf = (type: string) => ((ConnectedAccountsStore.getAccounts() ?? []) as unknown as ConnectedAccount[]).filter((account) => account.type === type && !account.revoked);
 const spotifyAccounts = () => accountsOf("spotify");
+
+function syncTimers(): void {
+    if (!running) return;
+    const spotify = spotifyAccounts().length > 0;
+    const lastfm = accountsOf("lastfm").length > 0;
+    if (spotify && !spotifyTimer) spotifyTimer = setInterval(refreshSpotify, SPOTIFY_POLL_MS);
+    else if (!spotify && spotifyTimer) {
+        clearInterval(spotifyTimer);
+        spotifyTimer = null;
+    }
+    if (lastfm && !lastFmTimer) lastFmTimer = setInterval(() => void pollLastFm(), LASTFM_POLL_MS);
+    else if (!lastfm && lastFmTimer) {
+        clearInterval(lastFmTimer);
+        lastFmTimer = null;
+    }
+}
 
 function lastFmMusicTrack(track: LastFmTrack, now = Date.now()): MusicTrack {
     const duration = track.duration_ms && track.elapsed_ms <= track.duration_ms ? track.duration_ms : undefined;
@@ -237,6 +254,7 @@ export default definePlugin({
             tokens.delete(accountId);
         },
         USER_CONNECTIONS_UPDATE() {
+            syncTimers();
             void pollLastFm();
         },
     },
@@ -246,6 +264,7 @@ export default definePlugin({
     },
 
     start() {
+        running = true;
         const music = bridge();
         if (music) {
             unsubscribe = music.onTracks((next) => {
@@ -254,12 +273,12 @@ export default definePlugin({
             });
             rewatch();
         }
-        spotifyTimer = setInterval(refreshSpotify, SPOTIFY_POLL_MS);
-        lastFmTimer = setInterval(() => void pollLastFm(), LASTFM_POLL_MS);
+        syncTimers();
         void pollLastFm();
     },
 
     stop() {
+        running = false;
         bridge()?.watch({});
         unsubscribe?.();
         unsubscribe = null;

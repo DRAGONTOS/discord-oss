@@ -43,15 +43,15 @@ Candidate work found in a source review on 2026-11-20. Items here are investigat
 
 ## Client and E2EE
 
-- [ ] **OPT-040** Bound the E2EE state map and scope DOM decoration. `client/e2ee/src/index.ts:32` grows `states` per decrypted message, and `ui.ts:1265-1410` sweeps all states on each refresh from a global MutationObserver. Bound the map and decorate only changed message ids. Risk: medium, needs an E2EE run.
-- [ ] **OPT-041** Cache imported Ed25519 keys. `client/e2ee/src/crypto.ts:22-32` calls `importKey` on every verify across message receive and key lookup. Memoize by encoded key with a bounded map. Risk: low.
-- [ ] **OPT-042** Memoize safety numbers. `client/e2ee/src/engine.ts:1462-1479` performs about 10400 sequential SHA-512 digests per member, called per member in `ui.ts:504`. Cache by key pair and coalesce concurrent calls. Risk: low.
-- [ ] **OPT-043** Refresh only stale key directory entries. `client/e2ee/src/engine.ts:1108-1110` refetches and re-verifies every user when one entry expires. Partition stale and fresh ids. Risk: low to medium.
-- [ ] **OPT-044** Short circuit local URL rewriting. `assets/client_patches/70-local-cdn.js:58-107` wraps DOM attribute and property setters and runs URL parsing plus regexes on every write. Skip work when the value has no URL host and memoize rewritten values. Risk: medium, needs `check:client` and a render smoke.
-- [ ] **OPT-045** Scope the safety CTA observer. `client/plugins/fosscordSafetyCTAs/index.ts:31-34` runs a subtree MutationObserver and a query per added node. Debounce to one frame, pre-filter node tag names. Risk: low.
-- [ ] **OPT-046** Gate music presence timers. `client/plugins/fosscordMusicPresence/index.tsx:257-258` runs two 15 second intervals with no connected accounts. Create them only when an account exists. Risk: low.
-- [ ] **OPT-047** Keep a running service worker file byte total. `client/e2ee/src/sw.ts:85-90` reduces over all files on each insert. Risk: low.
-- [ ] **OPT-048** Cache the toolbar node. `client/e2ee/src/ui.ts:1287` queries the whole document per refresh. Reuse a reference per channel. Risk: low.
+- [x] **OPT-040** Bound the E2EE state map and scope DOM decoration. `client/e2ee/src/index.ts:32` grows `states` per decrypted message, and `ui.ts:1265-1410` sweeps all states on each refresh from a global MutationObserver. Bound the map and decorate only changed message ids. Risk: medium, needs an E2EE run.
+- [x] **OPT-041** Cache imported Ed25519 keys. `client/e2ee/src/crypto.ts:22-32` calls `importKey` on every verify across message receive and key lookup. Memoize by encoded key with a bounded map. Risk: low.
+- [x] **OPT-042** Memoize safety numbers. `client/e2ee/src/engine.ts:1462-1479` performs about 10400 sequential SHA-512 digests per member, called per member in `ui.ts:504`. Cache by key pair and coalesce concurrent calls. Risk: low.
+- [x] **OPT-043** Refresh only stale key directory entries. `client/e2ee/src/engine.ts:1108-1110` refetches and re-verifies every user when one entry expires. Partition stale and fresh ids. Risk: low to medium.
+- [x] **OPT-044** Short circuit local URL rewriting. `assets/client_patches/70-local-cdn.js:58-107` wraps DOM attribute and property setters and runs URL parsing plus regexes on every write. Skip work when the value has no URL host and memoize rewritten values. Risk: medium, needs `check:client` and a render smoke.
+- [x] **OPT-045** Scope the safety CTA observer. `client/plugins/fosscordSafetyCTAs/index.ts:31-34` runs a subtree MutationObserver and a query per added node. Debounce to one frame, pre-filter node tag names. Risk: low.
+- [x] **OPT-046** Gate music presence timers. `client/plugins/fosscordMusicPresence/index.tsx:257-258` runs two 15 second intervals with no connected accounts. Create them only when an account exists. Risk: low.
+- [x] **OPT-047** Keep a running service worker file byte total. `client/e2ee/src/sw.ts:85-90` reduces over all files on each insert. Risk: low.
+- [x] **OPT-048** Cache the toolbar node. `client/e2ee/src/ui.ts:1287` queries the whole document per refresh. Reuse a reference per channel. Risk: low.
 
 ## Verification rules
 

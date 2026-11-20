@@ -1884,6 +1884,30 @@ ${final ? 1 : 0}`);
       });
     }
   }
+  // client/e2ee/src/boundedMap.ts
+  class BoundedMap extends Map {
+    limit;
+    constructor(limit) {
+      super();
+      this.limit = limit;
+    }
+    get(key) {
+      if (!super.has(key))
+        return;
+      const value = super.get(key);
+      super.delete(key);
+      super.set(key, value);
+      return value;
+    }
+    set(key, value) {
+      super.delete(key);
+      super.set(key, value);
+      while (this.size > this.limit)
+        super.delete(this.keys().next().value);
+      return this;
+    }
+  }
+
   // client/e2ee/src/crypto.ts
   var ALGORITHM = "x25519-hpke-aes256gcm-ed25519";
   var suite = new CipherSuite({
@@ -1896,13 +1920,25 @@ ${final ? 1 : 0}`);
   var generateAgreementKey = () => subtle().generateKey({ name: "X25519" }, false, ["deriveBits"]);
   var exportPublic = async (key) => toB64u(await subtle().exportKey("raw", key));
   var sign = async (key, message) => toB64u(await subtle().sign({ name: "Ed25519" }, key, utf8(message)));
+  var VERIFY_KEY_CACHE_SIZE = 512;
+  var verifyKeys = new BoundedMap(VERIFY_KEY_CACHE_SIZE);
+  var verifyKey = (publicKey, raw, usage) => {
+    const cacheKey = `${usage}:${publicKey}`;
+    let pending = verifyKeys.get(cacheKey);
+    if (!pending) {
+      pending = subtle().importKey("raw", raw, { name: "Ed25519" }, false, [usage]);
+      pending.catch(() => verifyKeys.delete(cacheKey));
+      verifyKeys.set(cacheKey, pending);
+    }
+    return pending;
+  };
   var verify = async (publicKey, message, signature) => {
     try {
       const raw = fromB64u(publicKey);
       const sig = fromB64u(signature);
       if (raw.length !== 32 || sig.length !== 64)
         return false;
-      const key = await subtle().importKey("raw", raw, { name: "Ed25519" }, false, ["verify"]);
+      const key = await verifyKey(publicKey, raw, "verify");
       return await subtle().verify({ name: "Ed25519" }, key, sig, utf8(message));
     } catch {
       return false;
@@ -3627,30 +3663,6 @@ ${userId}`)));
   };
   var conjunction = (items) => new Intl.ListFormat(locale(), { type: "conjunction" }).format(items);
 
-  // client/e2ee/src/boundedMap.ts
-  class BoundedMap extends Map {
-    limit;
-    constructor(limit) {
-      super();
-      this.limit = limit;
-    }
-    get(key) {
-      if (!super.has(key))
-        return;
-      const value = super.get(key);
-      super.delete(key);
-      super.set(key, value);
-      return value;
-    }
-    set(key, value) {
-      super.delete(key);
-      super.set(key, value);
-      while (this.size > this.limit)
-        super.delete(this.keys().next().value);
-      return this;
-    }
-  }
-
   // client/e2ee/src/engine.ts
   var FALLBACK_CONTENT = "\uD83D\uDD12 Encrypted message";
   var WRAP_INFO = "fosscord-e2ee/v1/wrap";
@@ -3805,6 +3817,7 @@ ${sig}`;
     lookupTimer = null;
     keyBatch = null;
     storedKeys = new BoundedMap(PLAINTEXT_CACHE_SIZE);
+    safetyNumbers = new BoundedMap(256);
     backfilling = false;
     wiped = false;
     freshIdentity = null;
@@ -3971,6 +3984,7 @@ ${sig}`;
     async trust(key) {
       if (this.trustedKey === key)
         return;
+      this.safetyNumbers.clear();
       await this.rememberIdentity(this.trustedKey);
       this.trustedKey = key;
       await this.store.set("trusted-identity", key);
@@ -4166,6 +4180,7 @@ ${digest}`;
       this.devices = [];
       this.plaintext.clear();
       this.directory.clear();
+      this.safetyNumbers.clear();
       this.members.clear();
       this.emit();
     }
@@ -4446,6 +4461,7 @@ ${digest}`;
         this.backup = null;
         this.holdPassword(password);
         this.directory.clear();
+        this.safetyNumbers.clear();
       }));
       await this.refresh();
     }
@@ -4517,8 +4533,9 @@ ${digest}`;
       return batch.users.then((users) => users[userId] ?? { identity_key: null, devices: [] });
     }
     async keysFor(userIds, force = false) {
+      const ids = [...new Set(userIds)];
       const pending = new Map;
-      for (const id of new Set(userIds)) {
+      for (const id of ids) {
         let entry = force ? undefined : this.directory.get(id);
         if (!entry) {
           entry = this.queryKeys(id).then((keys) => this.verifyEntry(id, keys));
@@ -4527,9 +4544,16 @@ ${digest}`;
         }
         pending.set(id, entry);
       }
-      const entries = await Promise.all(userIds.map((id) => pending.get(id)));
-      const stale = entries.filter((e) => Date.now() - e.fetchedAt > DIRECTORY_TTL_MS).map((e) => e.userId);
-      return stale.length && !force ? this.keysFor(userIds, true) : entries;
+      const resolved = await Promise.all(ids.map((id) => pending.get(id)));
+      const byId = new Map(ids.map((id, index) => [id, resolved[index]]));
+      if (!force) {
+        const stale = resolved.filter((entry) => Date.now() - entry.fetchedAt > DIRECTORY_TTL_MS).map((entry) => entry.userId);
+        if (stale.length) {
+          for (const entry of await this.keysFor(stale, true))
+            byId.set(entry.userId, entry);
+        }
+      }
+      return userIds.map((id) => byId.get(id));
     }
     async verifyEntry(userId, keys) {
       const identityKey = keys.identity_key;
@@ -4632,6 +4656,7 @@ ${digest}`;
       contact.verifiedAt = Date.now();
       await this.saveContacts();
       this.directory.delete(userId);
+      this.safetyNumbers.clear();
       this.emit();
       this.pushTrust([userId]).catch((error) => console.error("[e2ee] couldn't sync the accepted safety number", error));
     }
@@ -4907,19 +4932,29 @@ backup:${ownId}`).catch(() => null);
       const mine = this.trustedKey;
       if (!theirs || !mine)
         return null;
-      const part = async (id, key) => {
-        let digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([0, 0, ...fromB64u(key), ...utf8(id)])));
-        for (let i = 0;i < 5200; i++)
-          digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([...digest, ...fromB64u(key)])));
-        let out = "";
-        for (let i = 0;i < 30; i += 5) {
-          const chunk = digest.subarray(i, i + 5).reduce((acc, byte) => acc * 256 + byte, 0);
-          out += String(chunk % 1e5).padStart(5, "0");
-        }
-        return out;
-      };
-      const [own, other] = await Promise.all([part(this.userId, mine), part(userId, theirs)]);
-      return own < other ? own + other : other + own;
+      const cacheKey = `${this.userId}:${userId}:${mine}:${theirs}`;
+      let pending = this.safetyNumbers.get(cacheKey);
+      if (!pending) {
+        pending = (async () => {
+          const part = async (id, key) => {
+            const raw = fromB64u(key);
+            let digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([0, 0, ...raw, ...utf8(id)])));
+            for (let i = 0;i < 5200; i++)
+              digest = new Uint8Array(await crypto.subtle.digest("SHA-512", new Uint8Array([...digest, ...raw])));
+            let out = "";
+            for (let i = 0;i < 30; i += 5) {
+              const chunk = digest.subarray(i, i + 5).reduce((acc, byte) => acc * 256 + byte, 0);
+              out += String(chunk % 1e5).padStart(5, "0");
+            }
+            return out;
+          };
+          const [own, other] = await Promise.all([part(this.userId, mine), part(userId, theirs)]);
+          return own < other ? own + other : other + own;
+        })();
+        pending.catch(() => this.safetyNumbers.delete(cacheKey));
+        this.safetyNumbers.set(cacheKey, pending);
+      }
+      return pending;
     }
   }
 
@@ -5101,7 +5136,7 @@ backup:${ownId}`).catch(() => null);
           }
         })().finally(() => inflight.delete(key));
         inflight.set(key, pending);
-        return pending.then(() => ctx.onState());
+        return pending.then(() => ctx.onState(message.id));
       }
       return pending.then(() => {
         const again = engine.cached(message);
@@ -5110,7 +5145,7 @@ backup:${ownId}`).catch(() => null);
           show(message, again);
         else
           message.content = contentFor(state, message.content, engine.trustsServer);
-        ctx.onState();
+        ctx.onState(message.id);
       });
     };
     const redispatch = (copy) => {
@@ -5125,7 +5160,7 @@ backup:${ownId}`).catch(() => null);
         if (after === before && after !== "pending")
           return;
         redispatch(copy);
-        ctx.onState();
+        ctx.onState(copy.id);
       });
     };
     const retryAll = () => {
@@ -6077,6 +6112,7 @@ ${approver}`;
   var svg = (path, label) => `<svg viewBox="0 0 24 24" fill="currentColor" ${label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"'}><path fill-rule="evenodd" d="${path}"/></svg>`;
   var escape = (text) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   var currentChannel = () => /^\/channels\/@me\/(\d+)/.exec(location.pathname)?.[1] ?? null;
+  var CONTENT_PREFIX = "message-content-";
   var memberName = (m) => m.global_name || m.username;
   var reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
   var ago = (iso) => {
@@ -6142,6 +6178,9 @@ ${approver}`;
       retry: () => refresh()
     });
     let scheduled = false;
+    const changedIds = new Set;
+    let toolbarChannel = null;
+    let toolbarNode = null;
     let tooltip = null;
     let backupPromptDismissed = false;
     let requiredPasswordOpen = null;
@@ -7027,9 +7066,12 @@ ${approver}`;
       }, 15000);
       return false;
     };
-    const decorateMessages = () => {
-      for (const [id, info] of states) {
-        const content = document.getElementById(`message-content-${id}`);
+    const decorateMessages = (ids) => {
+      for (const id of ids) {
+        const info = states.get(id);
+        if (!info)
+          continue;
+        const content = document.getElementById(CONTENT_PREFIX + id);
         if (!content)
           continue;
         if (info.state === "decrypted")
@@ -7038,6 +7080,11 @@ ${approver}`;
           content.dataset.fe2eeState = info.state;
         content.querySelectorAll(".fe2ee-lock, .fe2ee-unlock").forEach((el) => el.remove());
       }
+    };
+    const changed = (messageId) => {
+      if (messageId)
+        changedIds.add(messageId);
+      refresh();
     };
     const headerLabel = (channelId) => {
       if (!engine.isEncrypted(channelId))
@@ -7053,10 +7100,17 @@ ${approver}`;
     };
     const decorateHeader = (channelId) => {
       const existing = document.querySelector(".fe2ee-toggle");
-      if (!channelId)
+      if (!channelId) {
+        toolbarChannel = null;
+        toolbarNode = null;
         return existing?.remove();
-      const toolbars = [...document.querySelectorAll('[class*="toolbar_"]')];
-      const toolbar = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
+      }
+      if (channelId !== toolbarChannel || !toolbarNode?.isConnected) {
+        toolbarChannel = channelId;
+        const toolbars = [...document.querySelectorAll('[class*="toolbar_"]')];
+        toolbarNode = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0] ?? null;
+      }
+      const toolbar = toolbarNode;
       if (!toolbar)
         return;
       const on = engine.isEncrypted(channelId);
@@ -7170,7 +7224,9 @@ ${approver}`;
           loadMembers(channelId);
         if (tooltip && !document.querySelector(".fe2ee-toggle:hover, .fe2ee-lock:hover"))
           hideTooltip();
-        decorateMessages();
+        const ids = [...changedIds];
+        changedIds.clear();
+        decorateMessages(ids);
         decorateHeader(channelId);
         decorateNotice(channelId);
         const needsPassword = bootstrapped && !failure && engine.trustsServer && engine.locked && !!channelId && engine.isEncrypted(channelId);
@@ -7190,7 +7246,21 @@ ${approver}`;
     };
     const start = () => {
       mount();
-      new MutationObserver(refresh).observe(document.body, { childList: true, subtree: true });
+      for (const id of states.keys())
+        changedIds.add(id);
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (node.nodeType !== 1)
+              continue;
+            const el = node;
+            if (el.id.startsWith(CONTENT_PREFIX))
+              changedIds.add(el.id.slice(CONTENT_PREFIX.length));
+            el.querySelectorAll(`[id^="${CONTENT_PREFIX}"]`).forEach((child) => changedIds.add(child.id.slice(CONTENT_PREFIX.length)));
+          }
+        }
+        refresh();
+      }).observe(document.body, { childList: true, subtree: true });
       engine.onChange(refresh);
       refresh();
     };
@@ -7200,6 +7270,7 @@ ${approver}`;
       document.addEventListener("DOMContentLoaded", start, { once: true });
     return {
       refresh,
+      changed,
       showError,
       showUnlock,
       unlockSnoozed,
@@ -7299,8 +7370,32 @@ ${approver}`;
 
   // client/e2ee/src/index.ts
   var HOOK_TIMEOUT_MS = 20000;
+  var STATE_CACHE_SIZE = 5000;
+
+  class StateCache extends Map {
+    limit;
+    constructor(limit) {
+      super();
+      this.limit = limit;
+    }
+    get(key) {
+      if (!super.has(key))
+        return;
+      const value = super.get(key);
+      super.delete(key);
+      super.set(key, value);
+      return value;
+    }
+    set(key, value) {
+      super.delete(key);
+      super.set(key, value);
+      while (this.size > this.limit)
+        super.delete(this.keys().next().value);
+      return this;
+    }
+  }
   var loader = window.__fosscordE2ee ??= { reqs: [] };
-  var states = new Map;
+  var states = new StateCache(STATE_CACHE_SIZE);
   var targets = {};
   var http = null;
   var failure = null;
@@ -7495,7 +7590,7 @@ ${approver}`;
       const token = response?.token;
       engine.passwordChanged(password, next, typeof token === "string" ? tokenApi(token) : undefined).catch((error) => console.error("[e2ee] couldn't rewrap the backup", error));
     },
-    onState: () => ui.refresh(),
+    onState: (messageId) => ui.changed?.(messageId),
     updateRecord: (message) => {
       try {
         loader.updateMessage?.(message.channel_id, message.id, {

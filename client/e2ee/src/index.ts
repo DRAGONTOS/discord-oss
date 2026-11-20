@@ -27,9 +27,30 @@ declare global {
 }
 
 const HOOK_TIMEOUT_MS = 20000;
+const STATE_CACHE_SIZE = 5000;
+
+type StateRecord = { state: MessageState; reason?: string };
+class StateCache extends Map<string, StateRecord> {
+    constructor(private readonly limit: number) {
+        super();
+    }
+    override get(key: string) {
+        if (!super.has(key)) return undefined;
+        const value = super.get(key) as StateRecord;
+        super.delete(key);
+        super.set(key, value);
+        return value;
+    }
+    override set(key: string, value: StateRecord) {
+        super.delete(key);
+        super.set(key, value);
+        while (this.size > this.limit) super.delete(this.keys().next().value as string);
+        return this;
+    }
+}
 
 const loader: LoaderState = (window.__fosscordE2ee ??= { reqs: [] });
-const states = new Map<string, { state: MessageState; reason?: string }>();
+const states = new StateCache(STATE_CACHE_SIZE);
 const targets: Targets = {};
 let http: HttpClient | null = null;
 let failure: string | null = null;
@@ -227,7 +248,7 @@ const hooks = createHooks({
         const token = (response as { token?: unknown } | null)?.token;
         engine.passwordChanged(password, next, typeof token === "string" ? tokenApi(token) : undefined).catch((error) => console.error("[e2ee] couldn't rewrap the backup", error));
     },
-    onState: () => ui.refresh(),
+    onState: (messageId) => ui.changed?.(messageId),
     updateRecord: (message) => {
         try {
             loader.updateMessage?.(message.channel_id, message.id, {
