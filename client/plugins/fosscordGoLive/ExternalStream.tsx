@@ -27,7 +27,7 @@ export interface GoLiveButtonProps {
 
 export function GoLiveButton({ plainButton, anchorButton, share, streaming, disabled }: GoLiveButtonProps) {
     const ref = React.useRef<HTMLDivElement>(null);
-    if (streaming || disabled || !share) return <>{plainButton}</>;
+    if (streaming) return <>{plainButton}</>;
     return (
         <Popout
             position="top"
@@ -38,9 +38,10 @@ export function GoLiveButton({ plainButton, anchorButton, share, streaming, disa
                     <Menu.MenuItem
                         id="vc-share-screen"
                         label="Screen share"
+                        disabled={disabled || !share}
                         action={() => {
                             closePopout();
-                            share();
+                            share?.();
                         }}
                     />
                     <Menu.MenuItem
