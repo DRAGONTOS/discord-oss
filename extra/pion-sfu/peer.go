@@ -36,6 +36,12 @@ type Peer struct {
 	isVideoPublished bool
 	maxBitrate       int
 
+	external bool
+	roomID   string
+	userID   string
+
+	disconnectEventSent atomic.Bool
+
 	lastKeyframeRequest time.Time
 
 	// single downstream track that all subscribed audio/video is multiplexed onto

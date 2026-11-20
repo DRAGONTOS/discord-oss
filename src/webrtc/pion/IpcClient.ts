@@ -22,6 +22,9 @@ export interface IpcPayload {
     videoPayloadType?: number;
     rtxPayloadType?: number;
     maxBitrate?: number;
+    external?: boolean;
+    roomId?: string;
+    userId?: string;
 }
 
 interface IpcMessage {

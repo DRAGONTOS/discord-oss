@@ -8,7 +8,9 @@ import { React, Select } from "@webpack/common";
 
 import { FosscordAuthor } from "../fosscordCore/shared";
 import { Forms } from "../fosscordCore/compat";
-import { SettingsSection } from "../fosscordCore/ui";
+import { Button, SettingsSection } from "../fosscordCore/ui";
+
+import { openStreamKeyModal, renderGoLiveButton } from "./ExternalStream";
 
 type Constraint = number | { ideal?: number; max?: number } | undefined;
 type Quality = { width?: number; height?: number; framerate?: number };
@@ -115,7 +117,16 @@ function QualitySettings() {
                 value: values.framerate,
                 onChange: (value) => void (typeof value === "number" && (values.framerate = value)),
             }),
+            React.createElement(ExternalStreamingSettings),
         ],
+    });
+}
+
+function ExternalStreamingSettings() {
+    return React.createElement(SettingsSection, {
+        title: "External streaming",
+        description: "Stream through OBS or other WHIP tools with a stream key.",
+        children: React.createElement(Button, { variant: "primary", onClick: openStreamKeyModal, children: "Manage stream key" }),
     });
 }
 
@@ -183,6 +194,10 @@ export default definePlugin({
         );
     },
 
+    renderGoLiveButton(props) {
+        return renderGoLiveButton(props);
+    },
+
     patches: [
         {
             find: "setDesktopInput=",
@@ -203,6 +218,14 @@ export default definePlugin({
             replacement: {
                 match: /(\i)\.some\((\i)=>\2\.id===(\i)\)&&\((\i)\.deviceId=\3\)(?=;try\{let \i=await \i\.acquire\(\{audio:!1,video:\4\}\))/,
                 replace: "$1.some($2=>$2.id===$3)&&($4.deviceId={exact:$3})",
+            },
+        },
+        {
+            find: "useStreamQualityIndicator",
+            replacement: {
+                match: /\(0,(\i)\.jsx\)\("div",\{className:(\i)\.IF,children:\(0,(\i)\.jsx\)\((\i)\.A,\{tooltipText:(\i),disabled:(\i),onClick:(\i),icon:(\i)\}\)\}\)/,
+                replace:
+                    '$self.renderGoLiveButton({plainButton:(0,$1.jsx)("div",{className:$2.IF,children:(0,$1.jsx)($4.A,{tooltipText:$5,disabled:$6,onClick:$7,icon:$8})}),anchorButton:(0,$1.jsx)("div",{className:$2.IF,children:(0,$1.jsx)($4.A,{tooltipText:$5,disabled:$6,onClick:null,icon:$8})}),share:$7,streaming:o,disabled:$6})',
             },
         },
     ],

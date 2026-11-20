@@ -138,6 +138,35 @@ export async function onVideo(this: WebRtcWebSocket, payload: VoicePayload) {
     );
 }
 
+export async function announceExternalPublisher(userId: string, voiceRoomId: string, stream: VideoStreamState, audioSsrc?: number, videoSsrc?: number, rtxSsrc?: number) {
+    const clients = mediaServer.getClientsForRtcServer<WebRtcWebSocket>(voiceRoomId);
+    await Promise.all(
+        [...clients].map(async (client) => {
+            if (client.user_id === userId || !client.webrtcConnected) return;
+            await client.subscribeToTrack(userId, "audio").catch(() => undefined);
+            await client.subscribeToTrack(userId, "video").catch(() => undefined);
+            const ssrcs = client.getOutgoingStreamSSRCsForUser(userId);
+            await Send(client.websocket as WebRtcWebSocket, {
+                op: VoiceOPCodes.VIDEO,
+                d: {
+                    user_id: userId,
+                    audio_ssrc: ssrcs.audio_ssrc ?? audioSsrc ?? 0,
+                    video_ssrc: ssrcs.video_ssrc ?? videoSsrc ?? 0,
+                    rtx_ssrc: ssrcs.rtx_ssrc ?? rtxSsrc ?? 0,
+                    streams: [
+                        {
+                            ...stream,
+                            ssrc: ssrcs.video_ssrc ?? videoSsrc ?? 0,
+                            rtx_ssrc: ssrcs.rtx_ssrc ?? rtxSsrc ?? 0,
+                            type: "video",
+                        },
+                    ],
+                } as VoiceVideoSchema,
+            });
+        }),
+    );
+}
+
 // check if we are not subscribed to producers in this server, if not, subscribe
 export async function subscribeToProducers(this: WebRtcWebSocket): Promise<void> {
     if (!this.webRtcClient || !this.webRtcClient.webrtcConnected) return;

@@ -165,6 +165,8 @@ export class PionMediaServer implements SignalingDelegate {
     private rooms = new Map<string, { type: RoomType; clients: Map<string, PionClient> }>();
     private clientsByUniqueId = new Map<string, PionClient>();
     private voiceClientsByUserId = new Map<string, PionClient>();
+    private externalClients = new Map<string, PionClient>();
+    onExternalDisconnected?: (client: { user_id: string; voiceRoomId: string }) => void;
     private process?: ChildProcess;
     private stopping = false;
     private _ip = "127.0.0.1";
@@ -245,11 +247,17 @@ export class PionMediaServer implements SignalingDelegate {
     }
 
     private onEvent(payload: IpcPayload) {
-        if (payload.type !== "connected") return;
         const client = this.clientsByUniqueId.get(payload.clientId);
-        if (client) {
+        if (!client) return;
+        if (payload.type === "connected") {
             client.webrtcConnected = true;
             client.emitter.emit("connected");
+            return;
+        }
+        if (payload.type === "disconnected" && this.externalClients.has(client.uniqueId)) {
+            this.externalClients.delete(client.uniqueId);
+            this.onClientClose(client);
+            this.onExternalDisconnected?.(client);
         }
     }
 
@@ -283,6 +291,26 @@ export class PionMediaServer implements SignalingDelegate {
 
     findClient(roomId: string, userId: string) {
         return this.rooms.get(roomId)?.clients.get(userId);
+    }
+
+    async registerExternalPublisher(roomId: string, userId: string, websocket: unknown) {
+        let room = this.rooms.get(roomId);
+        if (!room) this.rooms.set(roomId, (room = { type: "stream", clients: new Map() }));
+        const client = new PionClient(userId, roomId, websocket, this);
+        room.clients.set(userId, client);
+        this.clientsByUniqueId.set(client.uniqueId, client);
+        this.externalClients.set(client.uniqueId, client);
+        await this.ipc.request({ type: "join", clientId: client.uniqueId });
+        return client;
+    }
+
+    acceptExternalOffer(client: PionClient, sdp: string, roomId: string, userId: string) {
+        return this.ipc.request({ type: "offer", clientId: client.uniqueId, sdp, external: true, roomId, userId });
+    }
+
+    removeExternalPublisher(client: PionClient) {
+        this.externalClients.delete(client.uniqueId);
+        this.onClientClose(client);
     }
 
     async join<T>(roomId: string, userId: string, ws: T, type: RoomType): Promise<WebRtcClient<T>> {

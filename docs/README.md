@@ -32,6 +32,7 @@
 | [attachment-access.md](features/attachment-access.md) | The per-server toggle that stops attachment links from working outside the instance. |
 | [activities.md](features/activities.md) | Embedded activities. |
 | [music-presence.md](features/music-presence.md) | Spotify and Last.fm Listening activities, the Spotify and Last.fm connections, the desktop app's Spotify reader and external activity images. |
+| [external-streaming.md](features/external-streaming.md) | Stream keys and WHIP ingest from OBS into a voice channel. |
 | [game-activity.md](features/game-activity.md) | Game detection in the desktop app, Playing activities, Registered Games and game profiles. |
 | [profile-widgets.md](features/profile-widgets.md) | Application profile widgets. |
 | [connections.md](features/connections.md) | Connected accounts, domain verification and setting up Steam, Bluesky, Roblox, Bungie.net and the OAuth providers. |

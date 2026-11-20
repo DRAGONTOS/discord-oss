@@ -40,6 +40,7 @@ var h264Profiles = []h264Profile{
 	{"42e01f", 103, 104},
 	{"4d0028", 105, 106},
 	{"640028", 107, 108},
+	{"64001f", 109, 110},
 }
 
 func h264CodecParameters() []webrtc.RTPCodecParameters {
@@ -149,19 +150,36 @@ func handleJoin(clientID string) error {
 		log.Printf("Client %s ICE state: %s", p.id, state.String())
 	})
 
+	conn := ipcConn
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		log.Printf("Client %s peer connection state: %s", p.id, state.String())
-		if state == webrtc.PeerConnectionStateConnected {
+		switch state {
+		case webrtc.PeerConnectionStateConnected:
 			remote := selectedRemote(p)
 			log.Printf("Client %s media from %s", p.id, remote)
 			// Notify the signaling server that this client's WebRTC session is fully established.
-			sendErr := ipcConn.sendReply("", SignalMessage{
+			sendErr := conn.sendReply("", SignalMessage{
 				Type:     "connected",
 				ClientID: p.id,
 				Remote:   remote,
 			}, "")
 			if sendErr != nil {
 				log.Printf("Failed to send 'connected' event for %s: %v", p.id, sendErr)
+			}
+		case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateFailed, webrtc.PeerConnectionStateClosed:
+			if p.disconnectEventSent.CompareAndSwap(false, true) {
+				p.mu.Lock()
+				roomID, userID := p.roomID, p.userID
+				p.mu.Unlock()
+				sendErr := conn.sendReply("", SignalMessage{
+					Type:     "disconnected",
+					ClientID: p.id,
+					RoomID:   roomID,
+					UserID:   userID,
+				}, "")
+				if sendErr != nil {
+					log.Printf("Failed to send 'disconnected' event for %s: %v", p.id, sendErr)
+				}
 			}
 		}
 	})
@@ -200,9 +218,51 @@ func waitForGathering(ctx context.Context, complete <-chan struct{}) error {
 	}
 }
 
+func externalPublishDirections(rawSDP string) (audio, video bool) {
+	var session sdp.SessionDescription
+	if err := session.Unmarshal([]byte(rawSDP)); err != nil {
+		log.Printf("external offer SDP parse failed: %v", err)
+		return false, false
+	}
+	for _, media := range session.MediaDescriptions {
+		published := false
+		for _, attr := range media.Attributes {
+			if strings.EqualFold(attr.Key, "sendonly") || strings.EqualFold(attr.Key, "sendrecv") {
+				published = true
+				break
+			}
+		}
+		if !published {
+			continue
+		}
+		switch strings.ToLower(media.MediaName.Media) {
+		case "audio":
+			audio = true
+		case "video":
+			video = true
+		}
+	}
+	return audio, video
+}
+
 func handleOffer(ctx context.Context, p *Peer, msg SignalMessage, requestID string) error {
 	if msg.SDP == "" {
 		return fmt.Errorf("offer message missing SDP")
+	}
+
+	if msg.External {
+		audio, video := externalPublishDirections(msg.SDP)
+		p.mu.Lock()
+		p.external = true
+		p.roomID = msg.RoomID
+		p.userID = msg.UserID
+		if audio {
+			p.isAudioPublished = true
+		}
+		if video {
+			p.isVideoPublished = true
+		}
+		p.mu.Unlock()
 	}
 
 	offer := webrtc.SessionDescription{
@@ -251,8 +311,12 @@ func handlePublish(p *Peer, msg SignalMessage) error {
 		p.isVideoPublished = true
 		p.maxBitrate = int(msg.MaxBitrate)
 	}
+	external := p.external
 	existing := p.getPublishedTrack(trackType)
 	p.mu.Unlock()
+	if external {
+		return nil
+	}
 	if client := p.native.Load(); client != nil {
 		if trackType == "video" {
 			return client.publishVideo(msg.SSRC, msg.RtxSSRC)

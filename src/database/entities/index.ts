@@ -45,6 +45,7 @@ export * from "./Sticker";
 export * from "./StoreCollectible";
 export * from "./StickerPack";
 export * from "./Stream";
+export * from "./StreamKey";
 export * from "./StreamSession";
 export * from "./Team";
 export * from "./TeamMember";

@@ -44,6 +44,9 @@ type SignalMessage struct {
 	Mode        string `json:"mode,omitempty"`
 	Key         []byte `json:"key,omitempty"`
 	RtxSSRC     uint32 `json:"rtxSsrc,omitempty"`
+	External    bool   `json:"external,omitempty"`
+	RoomID      string `json:"roomId,omitempty"`
+	UserID      string `json:"userId,omitempty"`
 
 	AudioPayloadType uint8  `json:"audioPayloadType,omitempty"`
 	VideoPayloadType uint8  `json:"videoPayloadType,omitempty"`
@@ -236,10 +239,13 @@ func (ipcConn *IpcConnection) processMessage(ctx context.Context, ipcMsg IpcMess
 }
 
 func (ipcConn *IpcConnection) sendReply(requestID string, payload SignalMessage, errMsg string) error {
+	if ipcConn == nil {
+		return fmt.Errorf("no IPC connection")
+	}
+
 	// lock the connection to prevent concurrent writes from interleaving bytes
 	ipcConn.mu.Lock()
 	defer ipcConn.mu.Unlock()
-
 	if ipcConn.conn == nil {
 		return fmt.Errorf("no IPC connection")
 	}

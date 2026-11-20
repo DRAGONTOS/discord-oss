@@ -362,6 +362,7 @@ export const anonymousRouteLimits: RouteLimit[] = [
 ];
 
 export const topLevelRouteLimits: RouteLimit[] = [
+    { paths: ["/whip"], onlyIp: true, count: 30, window: 60 },
     { paths: ["/error-reporting-proxy"], onlyIp: true, count: 15, window: 30 },
     { paths: ["/verify-email"], onlyIp: true, count: 10, window: 60 },
     { paths: ["/healthz", "/readyz"], onlyIp: true, count: 60, window: 30 },
