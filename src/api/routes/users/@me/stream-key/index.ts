@@ -54,7 +54,7 @@ router.post(
         const expires_at = new Date(created_at.getTime() + STREAM_KEY_TTL_MS);
 
         await StreamKey.delete({ user_id: req.user_id });
-        await StreamKey.insert({
+        await StreamKey.create({
             user_id: req.user_id,
             guild_id,
             channel_id,
@@ -62,7 +62,7 @@ router.post(
             created_at,
             last_used_at: null,
             expires_at,
-        });
+        }).save();
 
         return res.json({
             key,
