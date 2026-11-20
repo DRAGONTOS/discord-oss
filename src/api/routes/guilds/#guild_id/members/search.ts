@@ -39,7 +39,6 @@ router.get(
         const prefix = `${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
         const members = await Member.createQueryBuilder("member")
             .leftJoinAndSelect("member.user", "user")
-            .leftJoinAndSelect("member.roles", "role")
             .where("member.guild_id = :guild_id", { guild_id })
             .andWhere(
                 new Brackets((qb) =>
@@ -50,10 +49,12 @@ router.get(
                 ),
             )
             .orderBy("member.joined_at", "ASC")
+            .take(limit)
             .getMany();
+        await Member.attachRoles(members);
 
         return res.json(
-            members.slice(0, limit).map((m) => ({
+            members.map((m) => ({
                 ...m.toPublicMember(),
                 user: m.user.toPublicUser(),
                 roles: m.roles.map((x) => x.id).filter((id) => id !== guild_id),

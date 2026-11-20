@@ -167,15 +167,19 @@ router.get(
 
         const message = await Message.findOneOrFail({
             where: { id: message_id, channel_id },
+            select: { reactions: true },
         });
         const reaction = findReaction(message.reactions, emoji);
         if (!reaction) return res.json([]);
 
         const after = req.query.after ? `${req.query.after}` : undefined;
-        const ids = usersOf(reaction, type).filter((id) => !after || BigInt(id) > BigInt(after));
+        const ids = [...usersOf(reaction, type)]
+            .filter((id) => !after || BigInt(id) > BigInt(after))
+            .sort()
+            .slice(0, limit);
         if (!ids.length) return res.json([]);
 
-        const users = await User.find({ where: { id: In(ids) }, order: { id: "ASC" }, take: limit });
+        const users = await User.find({ where: { id: In(ids) }, order: { id: "ASC" } });
         res.json(users.map((user) => user.toPublicUser()));
     },
 );

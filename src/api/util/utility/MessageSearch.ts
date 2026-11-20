@@ -196,14 +196,23 @@ export async function searchTabs(
     const tabErrors = searchTabErrors(body.tabs);
     if (Object.keys(tabErrors).length) throw FieldErrors(tabErrors);
     entries.forEach(([, query]) => assertSearchQuery(query ?? {}));
+    const results: Array<ReturnType<typeof searchResponse>> = new Array(entries.length);
+    let next = 0;
+    await Promise.all(
+        Array.from({ length: Math.min(3, entries.length) }, async () => {
+            while (next < entries.length) {
+                const index = next++;
+                const result = await searchMessages(userId, channels, {
+                    include_nsfw: body.include_nsfw,
+                    ...entries[index][1],
+                });
+                results[index] = searchResponse(userId, result, sigData);
+            }
+        }),
+    );
     const tabs: Record<string, unknown> = {};
-    for (const [name, query] of entries) {
-        const result = await searchMessages(userId, channels, {
-            include_nsfw: body.include_nsfw,
-            ...query,
-        });
-        const response = searchResponse(userId, result, sigData);
-        tabs[name] = { ...response, cursor: null };
-    }
+    entries.forEach(([name], index) => {
+        tabs[name] = { ...results[index], cursor: null };
+    });
     return { tabs, analytics_id: null, doing_deep_historical_index: false };
 }

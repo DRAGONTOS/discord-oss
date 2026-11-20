@@ -58,6 +58,7 @@ Read [CONTRIBUTING.MD](../CONTRIBUTING.MD) first.
 | [client-patches.md](development/client-patches.md) | How the Discord client is patched, built and checked. |
 | [parity.md](development/parity.md) | Every Discord feature and its state here. |
 | [work-backlog.md](development/work-backlog.md) | The task queue. |
+| [optimization-checklist.md](development/optimization-checklist.md) | Candidate performance work with source pointers, grouped by risk. |
 | [security.md](development/security.md) | The October 2026 security review and how to rerun its checks. |
 | [runtime-internals.md](development/runtime-internals.md) | Event transport, shutdown and JSON worker limits. |
 | [android-client.md](development/android-client.md) | Discord's Android app and the mobile bundle that points it at an instance. |

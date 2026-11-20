@@ -298,7 +298,7 @@ const start = async (userId: string) => {
         if (typeof response?.status !== "number") return fail(`Self-test failed: ${describeError(error)}`);
         const retryAfter = Number(response.body?.retry_after);
         const limited = response.status === 429 && retryAfter > 0;
-        const delay = limited ? Math.ceil(retryAfter) * 1000 + 1000 : Math.min(5000 * 2 ** startAttempts, 300000);
+        const delay = Math.min(limited ? Math.ceil(retryAfter) * 1000 + 1000 : 5000 * 2 ** startAttempts, 300000);
         startAttempts++;
         console.warn(`[e2ee] couldn't start (${describeError(error)}), retrying in ${Math.round(delay / 1000)}s`);
         ui.pause(

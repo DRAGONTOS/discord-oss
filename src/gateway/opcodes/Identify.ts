@@ -744,10 +744,11 @@ export async function onIdentify(this: WebSocket, data: Payload) {
         micros: serialiseUserSettingsProtoJsonTime.totalMicroseconds,
     });
 
+    const memberGuildIdSet = new Set(memberGuildIds);
     const clientGuildVersions = new Map(
         Object.entries((identify.client_state?.guild_versions ?? {}) as Record<string, unknown>)
             .map(([id, version]) => [id, Number(version)] as const)
-            .filter(([id, version]) => memberGuildIds.includes(id) && Number.isFinite(version) && version >= Date.now() - GUILD_VERSION_HORIZON),
+            .filter(([id, version]) => memberGuildIdSet.has(id) && Number.isFinite(version) && version >= Date.now() - GUILD_VERSION_HORIZON),
     );
     const guildEntityDeletes =
         clientGuildVersions.size && this.capabilities!.has(Capabilities.FLAGS.CLIENT_STATE_V2)
