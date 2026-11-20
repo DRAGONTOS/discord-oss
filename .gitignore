@@ -73,3 +73,6 @@ apps/mobile/android/app/build/
 apps/official-desktop/dist/
 apps/official-desktop/node_modules/
 *.bun-build
+
+# local cheat sheet
+cheatcheat.md

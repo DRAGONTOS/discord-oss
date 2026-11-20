@@ -36,7 +36,7 @@ type EmojiPickerProps = {
 };
 
 const EmojiPicker = findComponentByCodeLazy<EmojiPickerProps>("hasTabWrapper:", "showOnlyUnicode:", "isViewingEmojiPacks:");
-const EmojiConstants: { EmojiIntention: Record<string, number> } = findByPropsLazy("EmojiIntention", "isExternalEmojiAllowedForIntention");
+const EmojiConstants: { EmojiIntention: Record<string, number> } = findByPropsLazy("EmojiIntention");
 
 export const SUGGESTIONS = ["is typing…", "is yapping…", "is venting…", "is oversharing…", "is barking…", "is babbling…", "is daydreaming…", "is meowing…"];
 export const ANIMATIONS = ["None", "Pulse", "Ring", "Wave"];
