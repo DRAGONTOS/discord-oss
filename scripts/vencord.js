@@ -146,8 +146,9 @@ const writeOutput = (version) => {
     fs.writeFileSync(path.join(OUTPUT, reporter ? "reporter.js" : "vencord.js"), script);
     if (reporter) return;
     fs.writeFileSync(path.join(OUTPUT, "vencord.css"), css);
-    fs.rmSync(path.join(OUTPUT, "vendor"), { recursive: true, force: true });
-    fs.cpSync(path.join(CACHE, "src", "node_modules", "@vencord", "monaco-editor", "dist"), path.join(OUTPUT, "vendor", "monaco"), { recursive: true });
+    const builtVendor = path.join(dist, "vendor");
+    if (fs.existsSync(builtVendor)) fs.cpSync(builtVendor, path.join(OUTPUT, "vendor"), { recursive: true });
+    else fs.cpSync(path.join(SOURCE, "node_modules", "@vencord", "monaco-editor", "dist"), path.join(OUTPUT, "vendor", "monaco"), { recursive: true });
 };
 
 (() => {
