@@ -67,6 +67,10 @@ router.post(
     },
 );
 
+router.patch("/", route({ authentication: "never", responses: { 204: {} } }), (_req: Request, res: Response) => {
+    return res.sendStatus(204);
+});
+
 router.delete("/", route({ authentication: "never", responses: { 204: {} } }), async (req: Request, res: Response) => {
     const key = req.params.key as string;
     const client = active.get(key);
