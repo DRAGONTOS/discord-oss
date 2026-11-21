@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -155,9 +154,7 @@ type PublishedTrack struct {
 	reportReceived      uint32
 	received            atomic.Uint64
 	seqShift            atomic.Uint64
-	sampleCapture       []*rtp.Packet
-	sampleDumped        bool
-	sampleMu            sync.Mutex
+	params              parameterSets
 	nacked              atomic.Uint64
 	recovered           atomic.Uint64
 	lost                atomic.Uint64

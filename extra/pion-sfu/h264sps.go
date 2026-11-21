@@ -6,12 +6,60 @@ import (
 	"github.com/pion/rtp"
 )
 
-var (
-	h264SPS = []byte{0x67, 0x42, 0xc0, 0x1f, 0x8c, 0x68, 0x05, 0x00, 0x5b, 0xb0, 0x11, 0x01, 0xe1, 0x10, 0x8d, 0x40}
-	h264PPS = []byte{0x68, 0xce, 0x3c, 0x80}
-)
+// parameterSets holds the SPS and PPS NAL units (including their NAL headers)
+// observed in the incoming H264 stream. They are captured live rather than
+// hardcoded so the injected headers always match the encoder that is running.
+type parameterSets struct {
+	sps []byte
+	pps []byte
+}
 
-func buildSTAPA(sps, pps []byte) []byte {
+func (ps *parameterSets) ready() bool {
+	return len(ps.sps) > 0 && len(ps.pps) > 0
+}
+
+func (ps *parameterSets) reset() {
+	ps.sps = nil
+	ps.pps = nil
+}
+
+// capture extracts SPS/PPS NALs from a single RTP packet payload. It handles
+// single NAL units (7/8) and STAP-A aggregation (24) with 2-byte length prefixes.
+func (ps *parameterSets) capture(payload []byte) {
+	if len(payload) == 0 {
+		return
+	}
+	switch payload[0] & 0x1f {
+	case 7, 8:
+		nal := append([]byte(nil), payload...)
+		if payload[0]&0x1f == 7 {
+			ps.sps = nal
+		} else {
+			ps.pps = nal
+		}
+	case 24:
+		for i := 1; i+2 < len(payload); {
+			n := int(binary.BigEndian.Uint16(payload[i : i+2]))
+			i += 2
+			if n <= 0 || i+n > len(payload) {
+				break
+			}
+			nal := payload[i : i+n]
+			switch nal[0] & 0x1f {
+			case 7:
+				ps.sps = append([]byte(nil), nal...)
+			case 8:
+				ps.pps = append([]byte(nil), nal...)
+			}
+			i += n
+		}
+	}
+}
+
+// stapA builds a STAP-A aggregation packet (NAL type 24) from the captured
+// SPS and PPS.
+func (ps *parameterSets) stapA() []byte {
+	sps, pps := ps.sps, ps.pps
 	payload := make([]byte, 1+2+len(sps)+2+len(pps))
 	payload[0] = 0x78
 	binary.BigEndian.PutUint16(payload[1:3], uint16(len(sps)))
@@ -22,8 +70,8 @@ func buildSTAPA(sps, pps []byte) []byte {
 	return payload
 }
 
-var h264ParameterSets = buildSTAPA(h264SPS, h264PPS)
-
+// isH264IDRStart reports whether a payload begins an IDR picture: a single
+// NAL of type 5, or a FU-A (28) start fragment whose inner NAL type is 5.
 func isH264IDRStart(payload []byte) bool {
 	if len(payload) == 0 {
 		return false
@@ -37,62 +85,8 @@ func isH264IDRStart(payload []byte) bool {
 	return false
 }
 
-func h264ParameterSetPacket(idr *rtp.Packet) *rtp.Packet {
-	packet := &rtp.Packet{Header: idr.Header, Payload: h264ParameterSets}
+func parameterSetPacket(idr *rtp.Packet, stap []byte) *rtp.Packet {
+	packet := &rtp.Packet{Header: idr.Header, Payload: stap}
 	packet.Marker = false
 	return packet
-}
-
-// fuAToAnnexB rebuilds Annex-B NAL units from a stream of RTP/H264 packets.
-// STAP-A (24) is expanded by its length prefixes; FU-A (28) is reassembled
-// from its start/middle/end fragments; single NALs are emitted directly.
-func h264AnnexB(rtps []*rtp.Packet) []byte {
-	var out []byte
-	var fu []byte
-	startCode := func() { out = append(out, 0x00, 0x00, 0x00, 0x01) }
-	flushFU := func() {
-		if len(fu) > 0 {
-			startCode()
-			out = append(out, fu...)
-			fu = nil
-		}
-	}
-	for _, pkt := range rtps {
-		p := pkt.Payload
-		if len(p) == 0 {
-			continue
-		}
-		switch p[0] & 0x1f {
-		case 24: // STAP-A
-			flushFU()
-			for i := 1; i+2 < len(p); {
-				n := int(binary.BigEndian.Uint16(p[i : i+2]))
-				i += 2
-				if n <= 0 || i+n > len(p) {
-					break
-				}
-				startCode()
-				out = append(out, p[i:i+n]...)
-				i += n
-			}
-		case 28: // FU-A
-			if len(p) < 2 {
-				continue
-			}
-			indicator, header := p[0], p[1]
-			if header&0x80 != 0 { // start
-				fu = []byte{indicator&0xe0 | header&0x1f}
-			}
-			fu = append(fu, p[2:]...)
-			if header&0x40 != 0 { // end
-				flushFU()
-			}
-		default:
-			flushFU()
-			startCode()
-			out = append(out, p...)
-		}
-	}
-	flushFU()
-	return out
 }
