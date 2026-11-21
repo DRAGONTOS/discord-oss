@@ -80,14 +80,20 @@ export async function whipPost(req: Request, res: Response) {
 }
 
 export function whipPatch(req: Request, res: Response) {
-    const client = active.get(resolveKey(req));
-    const body = typeof req.body === "string" ? req.body : "";
+    const key = resolveKey(req);
+    const client = active.get(key);
+    const body = typeof req.body === "string" ? req.body : Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body ?? "");
+    let count = 0;
     if (client) {
         for (const line of body.split(/\r?\n/)) {
             const candidate = line.trim().replace(/^a=/, "");
-            if (candidate.startsWith("candidate:")) getMedia().addExternalIceCandidate(client, candidate);
+            if (candidate.startsWith("candidate:")) {
+                getMedia().addExternalIceCandidate(client, candidate);
+                count++;
+            }
         }
     }
+    console.log(`[WHIP PATCH] key=${key ? "present" : "missing"} client=${!!client} type=${req.get("content-type") ?? "none"} bytes=${body.length} candidates=${count}`);
     return res.sendStatus(204);
 }
 
