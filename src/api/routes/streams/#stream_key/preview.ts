@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { EXTERNAL_PREVIEW } from "./external-preview";
+import { EXTERNAL_PREVIEW } from "../../../util/external-preview";
 import { route } from "@spacebar/api/middlewares";
 import { Channel, ExternalStreams, GoLiveStreams, Member, Recipient, Stream, StreamPreviews } from "@spacebar/database";
 import { getPermission } from "@spacebar/util";
