@@ -71,6 +71,10 @@ export async function whipPost(req: Request, res: Response) {
 
         active.set(key, client);
         await announceExternalPublisher(record.user_id, roomId, client.videoStream, audioSsrc, videoSsrc, rtxSsrc);
+        res.set("Location", `/whip/${encodeURIComponent(key)}`);
+        res.set("Accept-Patch", "application/trickle-ice-sdpfrag");
+        res.set("Access-Control-Expose-Headers", "Location, Accept-Patch, ETag");
+        res.set("ETag", `W/"${key}"`);
         return res.status(201).set("Content-Type", "application/sdp").send(answer.sdp);
     } catch (error) {
         if (client) getMedia().removeExternalPublisher(client);
