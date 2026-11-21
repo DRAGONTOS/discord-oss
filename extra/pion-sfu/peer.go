@@ -168,7 +168,14 @@ func (pt *PublishedTrack) blocked() bool {
 }
 
 func (pt *PublishedTrack) forwardsTo(sub *Peer) bool {
-	return !pt.blocked() && (pt.kind != "audio" || !sub.deaf.Load())
+	if pt.blocked() {
+		return false
+	}
+	// An external publisher watching its own stream must not hear itself echo.
+	if pt.kind == "audio" && pt.publisher.external && sub.userID == pt.publisher.userID {
+		return false
+	}
+	return pt.kind != "audio" || !sub.deaf.Load()
 }
 
 func (p *Peer) moderate(blockAudio, blockVideo, deaf bool) {
