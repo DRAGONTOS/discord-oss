@@ -215,6 +215,7 @@ export class PionMediaServer implements SignalingDelegate {
             ],
             {
                 stdio: ["ignore", "pipe", "pipe"],
+                env: { ...process.env, GODEBUG: [process.env.GODEBUG, "x509negativeserial=1"].filter(Boolean).join(",") },
             },
         );
         const log = (data: Buffer) => {
