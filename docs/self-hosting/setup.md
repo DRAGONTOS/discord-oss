@@ -46,7 +46,7 @@ The workflow publishes two images to GitHub Container Registry on every push to 
 | `ghcr.io/libre-cord/meowcord-server:latest` | `server` |
 | `ghcr.io/libre-cord/meowcord-sfu:latest` | `sfu` |
 
-Each push also gets an immutable `sha-<commit>` tag, which is useful for pinning a rollback point. Public images pull without credentials. If the packages are private, log in first with a token that has `read:packages`:
+Branch pushes also get an immutable `sha-<commit>` tag, which is useful for pinning a rollback point. Pushing a `v*` tag publishes `latest`, `<version>` and `<major>.<minor>` tags. Public images pull without credentials. If the packages are private, log in first with a token that has `read:packages`:
 
 ```sh
 echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin

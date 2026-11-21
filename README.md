@@ -26,9 +26,29 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 
 ## Run an instance
 
-[Install](https://github.com/libre-cord/librecord/blob/production/docs/self-hosting/setup.md#install)
+The recommended way is the published Docker images. GitHub Actions builds them from the `production` branch, so `latest` is the tested build for that commit, and release tags such as `v1.2.3` produce immutable version tags. You still need this repository for `docker-compose.yml` and `.env.example`:
 
-[setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Librecord without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
+```sh
+git clone https://github.com/libre-cord/librecord.git && cd librecord
+cp .env.example .env
+$EDITOR .env
+docker compose up -d
+docker compose logs -f client
+```
+
+`docker compose up -d` pulls `ghcr.io/libre-cord/meowcord-server:latest` and `ghcr.io/libre-cord/meowcord-sfu:latest`. The client service downloads Discord's web client into a volume on the first start and exits; the server then listens on `127.0.0.1:32171`. Point a reverse proxy at it and open `https://<DOMAIN>/register`.
+
+To pin an exact version, set both image tags before starting:
+
+```sh
+MEOWCORD_SERVER_IMAGE=ghcr.io/libre-cord/meowcord-server:v1.2.3 \
+MEOWCORD_SFU_IMAGE=ghcr.io/libre-cord/meowcord-sfu:v1.2.3 \
+docker compose up -d
+```
+
+`sha-<commit>` tags are also published for every build, and `MEOWCORD_PULL_POLICY=build docker compose up -d --build` builds from the checkout instead of pulling. If the packages are private, run `echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin` first with a token that has `read:packages`.
+
+[Install](https://github.com/libre-cord/librecord/blob/production/docs/self-hosting/setup.md#install) has the full walkthrough. [setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Librecord without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
 
 ![The Librecord status page](docs/images/status.png)
 

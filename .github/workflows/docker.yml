@@ -3,6 +3,7 @@ name: Docker images
 on:
   push:
     branches: [production, docker-stable]
+    tags: ["v*"]
     paths-ignore: ["apps/**", "docs/**"]
 
 env:
@@ -40,6 +41,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
             type=sha
 
