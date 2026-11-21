@@ -23,3 +23,11 @@ The client shows the current key state with `GET`, generates a key with `POST` w
 The SFU normally replaces its ICE candidates with `WRTC_PUBLIC_IP`. An encoder on the same LAN as that public address then has to hairpin through the router, which many home routers do not support, and the WHIP connection fails with a PeerConnection state of `Failed`.
 
 Set `WRTC_LAN_IP` in `.env` to the host's LAN IPv4 address (for example `192.168.178.10`). The SFU then advertises both the public and the LAN address as extra host candidates and keeps its own candidates. Local encoders use the LAN route, remote viewers use the public one. Leave `WRTC_LAN_IP` empty when no encoder runs on the LAN.
+
+## Discovery and playback
+
+On connect, the WHIP handler creates a `Stream` row for the encoder's voice channel, sets `self_stream` on the user's voice state and broadcasts the `VOICE_STATE_UPDATE` to the channel. Other members learn the stream exists from that flag and construct the stream key from the channel and user ids. A viewer sends `STREAM_WATCH` and receives a `STREAM_CREATE` and `STREAM_SERVER_UPDATE` with its own token, then joins the same SFU room and subscribes to the external publisher's tracks. The handler deliberately does not send a `STREAM_SERVER_UPDATE` to the encoder's own client, because that would make it open a stream voice connection it cannot authenticate.
+
+On disconnect, delete or failed connect, the handler emits `STREAM_DELETE` addressed to the channel, removes the `Stream` row and clears `self_stream`, so the tile disappears for everyone.
+
+The stream tile has no self-preview image. Discord uploads the preview thumbnail from the publishing client through `POST /streams/:key/preview`, and an external encoder never does that. Viewers can watch the live stream, but the thumbnail stays blank.
