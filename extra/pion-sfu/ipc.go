@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
+	"github.com/pion/webrtc/v4"
 )
 
 type IpcConnection struct {
@@ -47,6 +48,7 @@ type SignalMessage struct {
 	External    bool   `json:"external,omitempty"`
 	RoomID      string `json:"roomId,omitempty"`
 	UserID      string `json:"userId,omitempty"`
+	Candidate   string `json:"candidate,omitempty"`
 
 	AudioPayloadType uint8  `json:"audioPayloadType,omitempty"`
 	VideoPayloadType uint8  `json:"videoPayloadType,omitempty"`
@@ -207,6 +209,8 @@ func (ipcConn *IpcConnection) processMessage(ctx context.Context, ipcMsg IpcMess
 				handleErr = handleNative(p, msg, requestID)
 			case "offer":
 				handleErr = handleOffer(ctx, p, msg, requestID)
+			case "add-ice-candidate":
+				handleErr = p.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: msg.Candidate})
 			case "publish":
 				handleErr = handlePublish(p, msg)
 			case "stop-publish":

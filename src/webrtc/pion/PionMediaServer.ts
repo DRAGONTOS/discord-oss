@@ -313,6 +313,10 @@ export class PionMediaServer implements SignalingDelegate {
         this.onClientClose(client);
     }
 
+    addExternalIceCandidate(client: PionClient, candidate: string) {
+        this.ipc.send({ type: "add-ice-candidate", clientId: client.uniqueId, candidate });
+    }
+
     async join<T>(roomId: string, userId: string, ws: T, type: RoomType): Promise<WebRtcClient<T>> {
         if (type !== "stream") {
             const existingVoiceClient = this.voiceClientsByUserId.get(userId);

@@ -67,9 +67,22 @@ router.post(
     },
 );
 
-router.patch("/", route({ authentication: "never", responses: { 204: {} } }), (_req: Request, res: Response) => {
-    return res.sendStatus(204);
-});
+router.patch(
+    "/",
+    express.text({ type: ["application/trickle-ice-sdpfrag", "application/sdp"], limit: "1mb" }),
+    route({ authentication: "never", responses: { 204: {} } }),
+    (req: Request, res: Response) => {
+        const client = active.get(req.params.key as string);
+        const body = typeof req.body === "string" ? req.body : "";
+        if (client) {
+            for (const line of body.split(/\r?\n/)) {
+                const candidate = line.trim().replace(/^a=/, "");
+                if (candidate.startsWith("candidate:")) getMedia().addExternalIceCandidate(client, candidate);
+            }
+        }
+        return res.sendStatus(204);
+    },
+);
 
 router.delete("/", route({ authentication: "never", responses: { 204: {} } }), async (req: Request, res: Response) => {
     const key = req.params.key as string;

@@ -25,6 +25,7 @@ export interface IpcPayload {
     external?: boolean;
     roomId?: string;
     userId?: string;
+    candidate?: string;
 }
 
 interface IpcMessage {
