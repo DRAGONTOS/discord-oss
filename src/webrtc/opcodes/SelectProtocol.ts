@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { ExternalStreams } from "@spacebar/database";
 import { SelectProtocolSchema, validateSchema } from "@spacebar/schemas";
 import { isNativeVoiceMode, nativeVoiceEnabled } from "@spacebar/util/util/NativeVoice";
 import { mediaServer, Send, VoiceOPCodes, VoicePayload, WebRtcWebSocket } from "@spacebar/webrtc";
@@ -12,9 +11,6 @@ type NativeCapableClient = { useNativeTransport?: (ssrc: number, mode: string, k
 
 const UNKNOWN_ENCRYPTION_MODE = 4016;
 const STREAM_KEYFRAME_INTERVAL_MS = 5000;
-
-const daveVersionFor = (socket: WebRtcWebSocket) =>
-    socket.type === "stream" && ExternalStreams.has(socket.webRtcClient!.voiceRoomId) ? 0 : Math.min(socket.maxDaveVersion, DAVE_PROTOCOL_VERSION);
 
 function nativePayloadTypes(codecs: SelectProtocolSchema["codecs"]): NativePayloadTypes {
     const find = (name: string) => codecs?.find((codec) => codec.name.toUpperCase() === name);
@@ -30,7 +26,7 @@ async function selectWebRtc(socket: WebRtcWebSocket, data: SelectProtocolSchema)
         (data.codecs ?? []).filter((codec): codec is Codec => ["opus", "VP8", "VP9", "H264"].includes(codec.name)),
     );
     socket.voiceProtocol = "webrtc";
-    socket.daveVersion = daveVersionFor(socket);
+    socket.daveVersion = Math.min(socket.maxDaveVersion, DAVE_PROTOCOL_VERSION);
 
     await Send(socket, {
         op: VoiceOPCodes.SESSION_DESCRIPTION,
@@ -64,7 +60,7 @@ async function selectUdp(socket: WebRtcWebSocket, data: SelectProtocolSchema) {
     const key = randomBytes(32);
     await client.useNativeTransport(ssrc, mode, key, nativePayloadTypes(data.codecs));
     socket.voiceProtocol = "udp";
-    socket.daveVersion = daveVersionFor(socket);
+    socket.daveVersion = Math.min(socket.maxDaveVersion, DAVE_PROTOCOL_VERSION);
 
     await Send(socket, {
         op: VoiceOPCodes.SESSION_DESCRIPTION,
