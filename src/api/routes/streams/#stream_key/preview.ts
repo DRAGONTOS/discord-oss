@@ -1,4 +1,5 @@
 import { Request, Response, Router } from "express";
+import { EXTERNAL_PREVIEW } from "./external-preview";
 import { route } from "@spacebar/api/middlewares";
 import { Channel, ExternalStreams, GoLiveStreams, Member, Recipient, Stream, StreamPreviews } from "@spacebar/database";
 import { getPermission } from "@spacebar/util";
@@ -9,9 +10,6 @@ const MAX_PREVIEW_LENGTH = 2 * 1024 * 1024;
 
 const PREVIEW_WAIT_MS = 10_000;
 const waiters = new Map<string, Set<(url: string) => void>>();
-
-const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"><rect width="1280" height="720" fill="#1e1f22"/><circle cx="640" cy="300" r="96" fill="#5865f2"/><text x="640" y="330" font-family="sans-serif" font-size="60" font-weight="bold" fill="#ffffff" text-anchor="middle">LIVE</text><text x="640" y="470" font-family="sans-serif" font-size="32" fill="#b5bac1" text-anchor="middle">Streaming from an external encoder</text></svg>`;
-const EXTERNAL_PREVIEW = `data:image/svg+xml;base64,${Buffer.from(placeholderSvg).toString("base64")}`;
 
 const ownerOf = (key: string) => key.split(":").at(-1);
 
