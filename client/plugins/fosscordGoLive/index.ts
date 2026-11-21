@@ -265,6 +265,13 @@ export default definePlugin({
                 replace: '$1this.userId&&this.context!=="stream"$2',
             },
         },
+        {
+            find: "_ensureDaveProtocolVersionAllowed(e,t,n){",
+            replacement: {
+                match: /(_ensureDaveProtocolVersionAllowed\(\i,\i,\i\)\{)/,
+                replace: '$1if(this.context==="stream")return !0;',
+            },
+        },
     ],
 
     start() {
