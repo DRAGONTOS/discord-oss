@@ -1,7 +1,7 @@
-import { Stream, StreamSession, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
-import { genVoiceToken, generateStreamKey } from "@spacebar/gateway";
+import { Member, Stream, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
+import { generateStreamKey } from "@spacebar/gateway";
 import { Config, Snowflake, emitEvent } from "@spacebar/util";
-import type { StreamCreateEvent, StreamDeleteEvent, StreamServerUpdateEvent } from "@spacebar/util";
+import type { StreamDeleteEvent, VoiceStateUpdateEvent } from "@spacebar/util";
 import { mediaServer } from "@spacebar/webrtc";
 import type { Request, Response } from "express";
 
@@ -25,7 +25,7 @@ const ssrcsOf = (sdp: string) => {
     return { audio: all[0], video: all[1] };
 };
 
-async function startExternalStream(userId: string, guildId: string | null, channelId: string) {
+async function startExternalStream(userId: string, channelId: string) {
     const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: channelId } });
     if (!voiceState) throw new Error("not connected to the voice channel");
     const region = Config.get().regions.available.find((entry) => entry.id === Config.get().regions.default);
@@ -36,27 +36,20 @@ async function startExternalStream(userId: string, guildId: string | null, chann
         stream = Stream.create({ id: Snowflake.generate(), owner_id: userId, channel_id: channelId, endpoint: region.endpoint });
         await stream.save();
     }
-    const sessionToken = genVoiceToken();
-    await StreamSession.create({ stream_id: stream.id, user_id: userId, session_id: voiceState.session_id, token: sessionToken }).save();
-
-    const streamKey = generateStreamKey(guildId ? "guild" : "call", guildId ?? undefined, channelId, userId);
+    voiceState.self_stream = true;
+    await voiceState.save();
+    if (voiceState.guild_id)
+        voiceState.member = await Member.findOneOrFail({
+            where: { id: userId, guild_id: voiceState.guild_id },
+            relations: { user: true, roles: true },
+        });
     await emitEvent({
-        event: "STREAM_CREATE",
+        event: "VOICE_STATE_UPDATE",
         user_id: userId,
-        data: {
-            stream_key: streamKey,
-            rtc_server_id: stream.id,
-            rtc_channel_id: (BigInt(stream.id) - 1n).toString(),
-            viewer_ids: [],
-            region: region.id,
-            paused: false,
-        },
-    } satisfies StreamCreateEvent);
-    await emitEvent({
-        event: "STREAM_SERVER_UPDATE",
-        user_id: userId,
-        data: { token: sessionToken, stream_key: streamKey, guild_id: null, endpoint: stream.endpoint },
-    } satisfies StreamServerUpdateEvent);
+        guild_id: voiceState.guild_id ?? undefined,
+        channel_id: voiceState.guild_id ? undefined : channelId,
+        data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
+    } satisfies VoiceStateUpdateEvent);
 
     return stream;
 }
@@ -64,9 +57,34 @@ async function startExternalStream(userId: string, guildId: string | null, chann
 async function endExternalStream(streamId: string, userId: string) {
     const stream = await Stream.findOne({ where: { id: streamId }, relations: { channel: true } });
     if (!stream) return;
-    const streamKey = generateStreamKey(stream.channel?.guild_id ? "guild" : "call", stream.channel?.guild_id ?? undefined, stream.channel_id, userId);
-    await emitEvent({ event: "STREAM_DELETE", data: { stream_key: streamKey } } satisfies StreamDeleteEvent);
+    const guildId = stream.channel?.guild_id ?? undefined;
+    const channelId = stream.channel_id;
+    const streamKey = generateStreamKey(guildId ? "guild" : "call", guildId, channelId, userId);
+    await emitEvent({
+        event: "STREAM_DELETE",
+        guild_id: guildId,
+        channel_id: guildId ? undefined : channelId,
+        data: { stream_key: streamKey },
+    } satisfies StreamDeleteEvent);
     await stream.remove();
+
+    const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: channelId } });
+    if (voiceState?.self_stream) {
+        voiceState.self_stream = false;
+        await voiceState.save();
+        if (voiceState.guild_id)
+            voiceState.member = await Member.findOneOrFail({
+                where: { id: userId, guild_id: voiceState.guild_id },
+                relations: { user: true, roles: true },
+            });
+        await emitEvent({
+            event: "VOICE_STATE_UPDATE",
+            user_id: userId,
+            guild_id: voiceState.guild_id ?? undefined,
+            channel_id: voiceState.guild_id ? undefined : channelId,
+            data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
+        } satisfies VoiceStateUpdateEvent);
+    }
 }
 
 function bindDisconnectHandler() {
@@ -100,7 +118,7 @@ export async function whipPost(req: Request, res: Response) {
     let client: Publisher | undefined;
     let streamId: string | undefined;
     try {
-        const stream = await startExternalStream(record.user_id, record.guild_id, record.channel_id);
+        const stream = await startExternalStream(record.user_id, record.channel_id);
         streamId = stream.id;
         const roomId = stream.id;
         client = await getMedia().registerExternalPublisher(roomId, record.user_id, { voiceProtocol: "webrtc" });
