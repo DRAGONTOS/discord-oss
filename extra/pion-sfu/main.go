@@ -294,10 +294,15 @@ func handleOffer(ctx context.Context, p *Peer, msg SignalMessage, requestID stri
 		return err
 	}
 
+	answerSDP := p.pc.LocalDescription().SDP
+	if msg.External {
+		answerSDP = addSpropParameterSets(answerSDP)
+	}
+
 	return ipcConn.sendReply(requestID, SignalMessage{
 		Type:     "answer",
 		ClientID: p.id,
-		SDP:      p.pc.LocalDescription().SDP,
+		SDP:      answerSDP,
 	}, "")
 }
 

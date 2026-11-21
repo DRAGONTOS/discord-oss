@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"strings"
 	"testing"
 
 	"github.com/pion/rtp"
@@ -98,5 +99,21 @@ func TestParameterSetsReset(t *testing.T) {
 	ps.reset()
 	if ps.ready() {
 		t.Fatal("expected parameter sets to be cleared")
+	}
+}
+
+func TestAddSpropParameterSets(t *testing.T) {
+	sdp := "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:111 opus/48000/2\r\n"
+	out := addSpropParameterSets(sdp)
+	if !strings.Contains(out, "sprop-parameter-sets="+spropParameterSets) {
+		t.Fatalf("sprop not injected: %s", out)
+	}
+	if strings.Count(out, "sprop-parameter-sets=") != 1 {
+		t.Fatalf("expected one sprop line: %s", out)
+	}
+	// idempotent
+	out2 := addSpropParameterSets(out)
+	if strings.Count(out2, "sprop-parameter-sets=") != 1 {
+		t.Fatalf("sprop injected twice: %s", out2)
 	}
 }
