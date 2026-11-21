@@ -12,7 +12,7 @@ This page runs a public instance with Docker Compose on one Linux host. [native.
 | `warp`     | Cloudflare WARP as a SOCKS5 proxy for fetches of user-chosen URLs. |
 | `server`   | API, CDN, gateway, voice gateway and web client on port 3001 inside the container, published on `127.0.0.1:32171`. |
 
-Compose builds the `meowcord-server` and `meowcord-sfu` images from this checkout, with Equicord at the commit pinned in `client/vencord.json`. Neither image is published.
+Compose pulls the `meowcord-server` and `meowcord-sfu` images from GitHub Container Registry by default, built by `.github/workflows/docker.yml` on pushes to `production`. To build from this checkout instead, for example when testing a change, set `MEOWCORD_PULL_POLICY=build`. Equicord is always at the commit pinned in `client/vencord.json`; see [Prebuilt images](#prebuilt-images) for the image names and overrides.
 
 ## Requirements
 
@@ -27,13 +27,38 @@ Compose builds the `meowcord-server` and `meowcord-sfu` images from this checkou
 git clone https://github.com/libre-cord/librecord.git librecord && cd librecord
 cp .env.example .env
 $EDITOR .env
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f client
 ```
+
+`docker compose up -d` pulls the published images. To build them locally from the checkout, use `MEOWCORD_PULL_POLICY=build docker compose up -d --build`.
 
 The client service downloads about 300 MB in 12,000 files, which takes several minutes. The server starts when the client service exits and listens on `127.0.0.1:32171`. Point your reverse proxy or tunnel at it, as [Your own reverse proxy](#your-own-reverse-proxy) describes, then open `https://<DOMAIN>/register`. Nothing from Discord goes into the image or into git.
 
 To use an env file other than `.env`, pass it to every `docker compose` command, as in `docker compose --env-file prod.env up -d`, and set `ENV_FILE=prod.env` for the scripts in `scripts/ops` and `scripts/auto-update.sh`.
+
+## Prebuilt images
+
+The workflow publishes two images to GitHub Container Registry on every push to `production`:
+
+| Image | Dockerfile target |
+| --- | --- |
+| `ghcr.io/libre-cord/meowcord-server:latest` | `server` |
+| `ghcr.io/libre-cord/meowcord-sfu:latest` | `sfu` |
+
+Each push also gets an immutable `sha-<commit>` tag, which is useful for pinning a rollback point. Public images pull without credentials. If the packages are private, log in first with a token that has `read:packages`:
+
+```sh
+echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin
+```
+
+Compose reads `MEOWCORD_SERVER_IMAGE`, `MEOWCORD_SFU_IMAGE` and `MEOWCORD_PULL_POLICY` from `.env`, so you can point at a mirror or a specific commit:
+
+```sh
+MEOWCORD_SERVER_IMAGE=ghcr.io/libre-cord/meowcord-server:sha-abc1234 docker compose up -d
+```
+
+`MEOWCORD_PULL_POLICY=build` makes Compose use the local `build:` blocks instead of pulling. The `client` service always uses the server image and never pulls on its own, because the `server` service has already made it available locally.
 
 ## Environment
 
