@@ -335,12 +335,13 @@ export class PionMediaServer implements SignalingDelegate {
             if (existingVoiceClient) this.onClientClose(existingVoiceClient);
         }
         const existing = this.findClient(roomId, userId);
-        if (existing) this.onClientClose(existing);
+        const sharesRoomWithExternal = existing ? this.externalClients.has(existing.uniqueId) : false;
+        if (existing && !sharesRoomWithExternal) this.onClientClose(existing);
 
         let room = this.rooms.get(roomId);
         if (!room) this.rooms.set(roomId, (room = { type, clients: new Map() }));
         const client = new PionClient(userId, roomId, ws, this);
-        room.clients.set(userId, client);
+        room.clients.set(sharesRoomWithExternal ? client.uniqueId : userId, client);
         this.clientsByUniqueId.set(client.uniqueId, client);
         if (type !== "stream") this.voiceClientsByUserId.set(userId, client);
         await this.ipc.request({ type: "join", clientId: client.uniqueId });
@@ -435,6 +436,7 @@ export class PionMediaServer implements SignalingDelegate {
         if (this.voiceClientsByUserId.get(client.user_id) === client) this.voiceClientsByUserId.delete(client.user_id);
         const room = this.rooms.get(client.voiceRoomId);
         if (room?.clients.get(client.user_id) === client) room.clients.delete(client.user_id);
+        if (room?.clients.get(client.uniqueId) === client) room.clients.delete(client.uniqueId);
         for (const other of room?.clients.values() ?? []) other.outgoing.delete(client.user_id);
         if (room && room.clients.size === 0) this.rooms.delete(client.voiceRoomId);
         this.ipc.send({ type: "leave", clientId: client.uniqueId });

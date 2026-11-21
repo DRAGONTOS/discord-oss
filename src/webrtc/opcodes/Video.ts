@@ -14,7 +14,7 @@ export function mapNativeSsrc(subscriber: WebRtcWebSocket, userId: string, ssrc:
 
 function subscribeRoom(publisher: WebRtcWebSocket, voiceRoomId: string, type: "audio" | "video", subscribed: Set<WebRtcClient<WebRtcWebSocket>>) {
     const pending = [...mediaServer.getClientsForRtcServer<WebRtcWebSocket>(voiceRoomId)].filter(
-        (client) => client.user_id !== publisher.user_id && !client.isSubscribedToTrack(publisher.user_id, type),
+        (client) => client !== publisher.webRtcClient && !client.isSubscribedToTrack(publisher.user_id, type),
     );
     return Promise.all(
         pending.map(async (client) => {
@@ -169,21 +169,21 @@ export async function announceExternalPublisher(userId: string, voiceRoomId: str
 
 // check if we are not subscribed to producers in this server, if not, subscribe
 export async function subscribeToProducers(this: WebRtcWebSocket): Promise<void> {
-    if (!this.webRtcClient || !this.webRtcClient.webrtcConnected) return;
+    if (!this.webRtcClient?.webrtcConnected) return;
 
     const clients = mediaServer.getClientsForRtcServer<WebRtcWebSocket>(this.webRtcClient.voiceRoomId);
 
     // a subscription made before this connection was up (everyone reconnects at once after a restart) missed the
     // keyframes asked for then, and a screenshare encoder may not send another for a long time: ask again
     for (const client of clients)
-        if (client.user_id !== this.user_id && client.isProducingVideo())
+        if (client !== this.webRtcClient && client.isProducingVideo())
             for (const delay of [250, 1000]) setTimeout(() => (client as { requestKeyframe?: () => void }).requestKeyframe?.(), delay);
 
     await Promise.all(
         Array.from(clients).map(async (client) => {
             let needsUpdate = false;
 
-            if (client.user_id === this.user_id) return; // cannot subscribe to self
+            if (client === this.webRtcClient) return; // cannot subscribe to self
 
             if (client.isProducingAudio() && !this.webRtcClient!.isSubscribedToTrack(client.user_id, "audio")) {
                 await this.webRtcClient!.subscribeToTrack(client.user_id, "audio");
