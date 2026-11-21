@@ -272,6 +272,13 @@ export default definePlugin({
                 replace: '$1if(this.context==="stream")return !0;',
             },
         },
+        {
+            find: "streamParameters:u,dave:this.dave,transientKeys:null!=this.dave?eX():null",
+            replacement: {
+                match: /dave:this\.dave,transientKeys:null!=this\.dave\?(\i)\(\):null/,
+                replace: 'dave:"stream"===e?null:this.dave,transientKeys:"stream"===e?null:null!=this.dave?$1():null',
+            },
+        },
     ],
 
     start() {
