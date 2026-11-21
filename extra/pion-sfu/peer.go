@@ -153,6 +153,7 @@ type PublishedTrack struct {
 	reportExpected      uint32
 	reportReceived      uint32
 	received            atomic.Uint64
+	seqShift            atomic.Uint64
 	nacked              atomic.Uint64
 	recovered           atomic.Uint64
 	lost                atomic.Uint64

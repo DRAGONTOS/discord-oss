@@ -728,6 +728,11 @@ func (pt *PublishedTrack) expireLosses() {
 }
 
 func (p *Peer) forward(pt *PublishedTrack, pkt *rtp.Packet) {
+	if shift := uint16(pt.seqShift.Load()); shift != 0 {
+		shifted := *pkt
+		shifted.SequenceNumber += shift
+		pkt = &shifted
+	}
 	if client := p.native.Load(); client != nil {
 		client.send(pt, pkt)
 		return

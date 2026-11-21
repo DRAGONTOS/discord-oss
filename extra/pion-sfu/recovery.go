@@ -188,7 +188,17 @@ func (pt *PublishedTrack) ingest(pkt *rtp.Packet) {
 		return
 	}
 
-	for _, other := range sfu.Subscribers(pt.key) {
+	subscribers := sfu.Subscribers(pt.key)
+	if pt.kind == "video" && pt.publisher.external && isH264IDRStart(pkt.Payload) {
+		parameterSets := h264ParameterSetPacket(pkt)
+		for _, other := range subscribers {
+			if pt.forwardsTo(other) {
+				other.forward(pt, parameterSets)
+			}
+		}
+		pt.seqShift.Add(1)
+	}
+	for _, other := range subscribers {
 		if pt.forwardsTo(other) {
 			other.forward(pt, pkt)
 		}
@@ -396,14 +406,41 @@ func (sub *Peer) retransmit(pt *PublishedTrack, nack *rtcp.TransportLayerNack) {
 	} else {
 		packets = make([]*rtp.Packet, len(seqs))
 	}
-	pt.cache.getMany(seqs, packets)
-	for _, pkt := range packets {
+	shift := uint16(pt.seqShift.Load())
+	lookup := seqs
+	if shift != 0 {
+		var lookupScratch [128]uint16
+		if len(seqs) <= len(lookupScratch) {
+			lookup = lookupScratch[:len(seqs)]
+		} else {
+			lookup = make([]uint16, len(seqs))
+		}
+		for i, seq := range seqs {
+			lookup[i] = seq - shift
+		}
+	}
+	pt.cache.getMany(lookup, packets)
+	var shiftedScratch [128]rtp.Packet
+	var shifted []rtp.Packet
+	if shift != 0 {
+		if len(packets) <= len(shiftedScratch) {
+			shifted = shiftedScratch[:len(packets)]
+		} else {
+			shifted = make([]rtp.Packet, len(packets))
+		}
+	}
+	for i, pkt := range packets {
 		sub.nacksReceived.Add(1)
 		if pkt == nil {
 			sub.notCached.Add(1)
 			continue
 		}
 		sub.retransmitted.Add(1)
+		if shift != 0 {
+			shifted[i] = *pkt
+			shifted[i].SequenceNumber += shift
+			pkt = &shifted[i]
+		}
 		if client := sub.native.Load(); client != nil {
 			client.retransmit(pt, pkt)
 			continue

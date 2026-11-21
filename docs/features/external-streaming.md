@@ -31,3 +31,13 @@ On connect, the WHIP handler creates a `Stream` row for the encoder's voice chan
 On disconnect, delete or failed connect, the handler emits `STREAM_DELETE` addressed to the channel, removes the `Stream` row and clears `self_stream`, so the tile disappears for everyone.
 
 The stream tile has no self-preview image. Discord uploads the preview thumbnail from the publishing client through `POST /streams/:key/preview`, and an external encoder never does that. Viewers can watch the live stream, but the thumbnail stays blank.
+
+## H.264 parameter sets
+
+Some encoders send IDR slices without SPS and PPS NAL units before them. Browsers cannot initialise their H.264 decoder without those parameter sets, so the stream shows audio and a black video area.
+
+For publishers marked external, the SFU injects a single STAP-A aggregation packet containing SPS and PPS immediately before each IDR start, which it detects from a single NAL of type 5 or a FU-A start with inner type 5. The injected NALs describe Constrained Baseline level 3.1 at 1280x720. The packet carries the IDR's timestamp and SSRC, and the marker bit is clear.
+
+Because the injected packet adds one RTP packet to the stream, the SFU advances the sequence number of the IDR and every later forwarded packet by one. The publisher's own sequence numbers are unchanged, so loss tracking and NACKs to the publisher still use the original values. Retransmissions to viewers translate back to the original sequence for the cache lookup and forward with the shifted number. Publishers that are not external keep their sequence numbers untouched.
+
+The injected parameter sets are fixed. An encoder that produces a different resolution or profile needs matching SPS and PPS bytes in `extra/pion-sfu/h264sps.go`, or support for reading them from the offer's `sprop-parameter-sets` or from the incoming bitstream.

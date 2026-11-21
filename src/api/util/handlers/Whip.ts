@@ -110,8 +110,7 @@ export async function whipPost(req: Request, res: Response) {
     if (!record) return res.status(404).send();
     if (active.has(key)) return res.status(409).send();
 
-    const videoFmtp = sdp.split(/\r?\n/).find((line) => /^a=fmtp:\d+ /.test(line) && /profile-level-id/.test(line));
-    console.log(`[WHIP] key=${key.slice(0, 8)} ssrcs=${JSON.stringify(ssrcsOf(sdp))} fmtp=${videoFmtp ?? "none"}`);
+    console.log(`[WHIP] external publish key=${key.slice(0, 8)} ssrcs=${JSON.stringify(ssrcsOf(sdp))}`);
 
     const parsed = ssrcsOf(sdp);
     const audioSsrc = parsed.audio ?? 1;
