@@ -26,7 +26,7 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 
 ## Run an instance
 
-The recommended way is the published Docker images. GitHub Actions builds them from the `production` branch, so `latest` is the tested build for that commit, and release tags such as `v1.2.3` produce immutable version tags. You still need this repository for `docker-compose.yml` and `.env.example`:
+The recommended way is the published Docker images. GitHub Actions builds them only when a version tag such as `v1.2.3` is pushed, so `latest` tracks the latest release and each release gets immutable version tags. You still need this repository for `docker-compose.yml` and `.env.example`:
 
 ```sh
 git clone https://github.com/libre-cord/librecord.git && cd librecord

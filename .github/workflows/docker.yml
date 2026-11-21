@@ -2,9 +2,8 @@ name: Docker images
 
 on:
   push:
-    branches: [production]
     tags: ["v*"]
-    paths-ignore: ["apps/**", "docs/**"]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

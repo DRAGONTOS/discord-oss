@@ -39,14 +39,14 @@ To use an env file other than `.env`, pass it to every `docker compose` command,
 
 ## Prebuilt images
 
-The workflow publishes two images to GitHub Container Registry on every push to `production`:
+The workflow publishes two images to GitHub Container Registry when a version tag is pushed:
 
 | Image | Dockerfile target |
 | --- | --- |
 | `ghcr.io/libre-cord/meowcord-server:latest` | `server` |
 | `ghcr.io/libre-cord/meowcord-sfu:latest` | `sfu` |
 
-Branch pushes also get an immutable `sha-<commit>` tag, which is useful for pinning a rollback point. Pushing a `v*` tag publishes `latest`, `<version>` and `<major>.<minor>` tags. Public images pull without credentials. If the packages are private, log in first with a token that has `read:packages`:
+Each release also gets an immutable `sha-<commit>` tag, which is useful for pinning a rollback point. Pushing a `v*` tag publishes `latest`, `<version>` and `<major>.<minor>` tags. Ordinary commits do not trigger a build. Public images pull without credentials. If the packages are private, log in first with a token that has `read:packages`:
 
 ```sh
 echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin
