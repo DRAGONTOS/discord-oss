@@ -30,7 +30,7 @@ services:
 
   client:
     image: ${MEOWCORD_SERVER_IMAGE:-ghcr.io/libre-cord/meowcord-server:latest}
-    pull_policy: never
+    pull_policy: ${MEOWCORD_PULL_POLICY:-always}
     init: true
     command: ["client"]
     restart: "no"
