@@ -12,7 +12,7 @@ RUN mkdir -p /run/sfu && chown 1000:1000 /run/sfu
 COPY --from=sfu-build /out/pion-sfu /usr/local/bin/pion-sfu
 USER 1000:1000
 ENV WRTC_PORT=50000 PION_SFU_IPC=/run/sfu/sfu.sock
-ENTRYPOINT ["/bin/sh", "-c", "exec pion-sfu -ip \"${WRTC_PUBLIC_IP:?set WRTC_PUBLIC_IP}\" -port \"$WRTC_PORT\" -ipc \"$PION_SFU_IPC\" ${PION_SFU_VERBOSE:+-verbose}"]
+ENTRYPOINT ["/bin/sh", "-c", "exec pion-sfu -ip \"${WRTC_PUBLIC_IP:?set WRTC_PUBLIC_IP}\" -port \"$WRTC_PORT\" -ipc \"$PION_SFU_IPC\" ${WRTC_LAN_IP:+-lan-ip \"$WRTC_LAN_IP\"} ${PION_SFU_VERBOSE:+-verbose}"]
 
 FROM node:26-slim AS dependencies
 COPY --from=oven/bun:1.4-slim /usr/local/bin/bun /usr/local/bin/bun

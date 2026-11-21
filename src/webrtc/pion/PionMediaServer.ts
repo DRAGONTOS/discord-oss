@@ -199,9 +199,20 @@ export class PionMediaServer implements SignalingDelegate {
 
     private spawn(socketPath: string) {
         const extraArgs = process.env.PION_SFU_ARGS?.split(/\s+/).filter(Boolean) ?? [];
+        const lanIp = process.env.WRTC_LAN_IP?.trim();
         const child = spawn(
             process.env.PION_SFU_BIN!,
-            ["-port", String(this._port), "-ip", this._ip, "-ipc", socketPath, ...(process.env.PION_SFU_VERBOSE ? ["-verbose"] : []), ...extraArgs],
+            [
+                "-port",
+                String(this._port),
+                "-ip",
+                this._ip,
+                "-ipc",
+                socketPath,
+                ...(lanIp ? ["-lan-ip", lanIp] : []),
+                ...(process.env.PION_SFU_VERBOSE ? ["-verbose"] : []),
+                ...extraArgs,
+            ],
             {
                 stdio: ["ignore", "pipe", "pipe"],
             },

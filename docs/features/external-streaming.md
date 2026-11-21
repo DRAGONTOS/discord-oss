@@ -17,3 +17,9 @@ Creating a key replaces any key the same account already had. A key is 32 random
 ## Client flow
 
 The client shows the current key state with `GET`, generates a key with `POST` when the user chooses a voice channel, and shows the returned plaintext once for the user to copy into OBS. The WHIP ingest route hashes the key the encoder sends, looks up the matching hash, checks the expiry, records `last_used_at`, and resolves the owning user, guild and channel. The encoder keeps using the same key for the life of the stream. `DELETE` stops new WHIP sessions from using the key.
+
+## Encoders on the local network
+
+The SFU normally replaces its ICE candidates with `WRTC_PUBLIC_IP`. An encoder on the same LAN as that public address then has to hairpin through the router, which many home routers do not support, and the WHIP connection fails with a PeerConnection state of `Failed`.
+
+Set `WRTC_LAN_IP` in `.env` to the host's LAN IPv4 address (for example `192.168.178.10`). The SFU then advertises both the public and the LAN address as extra host candidates and keeps its own candidates. Local encoders use the LAN route, remote viewers use the public one. Leave `WRTC_LAN_IP` empty when no encoder runs on the LAN.

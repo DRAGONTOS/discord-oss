@@ -44,6 +44,7 @@ Compose passes these from `.env` and refuses to start without the first three. `
 | `DOMAIN` | Host name of the instance, such as `chat.example.com`. The server builds every public URL from it. `http://localhost:32171` works for a local trial. |
 | `POSTGRES_PASSWORD` | Letters and digits only, for example from `openssl rand -hex 24`. Postgres reads it only when its volume is empty, so changing it later also needs `ALTER USER`. |
 | `WRTC_PUBLIC_IP` | Public IPv4 address or host name that clients send media to. Behind NAT, use the outside address and forward the voice port. A host name is resolved once at startup. |
+| `WRTC_LAN_IP` | Optional LAN IPv4 address of the host. When set, the SFU advertises it alongside the public address so encoders on the same network can connect without hairpin NAT. See [external-streaming.md](../features/external-streaming.md). |
 | `WRTC_PORT` | UDP port for all media, 50000 by default. |
 | `NATIVE_VOICE` | `true` lets the official Discord desktop apps use their native voice engine for audio, camera video and Go Live on the same UDP port. Off by default, because video over the native engine has only been tested with a simulated client so far. See [native-voice.md](../development/native-voice.md). |
 | `INSTANCE_NAME` | Name shown in the client, emails, developer portal and status page. It is applied on the first start and whenever you change it here, and otherwise a name set in the admin dashboard stays. |

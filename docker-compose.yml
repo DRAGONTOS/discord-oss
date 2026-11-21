@@ -49,6 +49,7 @@ services:
     restart: unless-stopped
     environment:
       WRTC_PUBLIC_IP: ${WRTC_PUBLIC_IP:?set WRTC_PUBLIC_IP in .env}
+      WRTC_LAN_IP: ${WRTC_LAN_IP:-}
       WRTC_PORT: ${WRTC_PORT:-50000}
       PION_SFU_VERBOSE: ${PION_SFU_VERBOSE:-}
     ports:

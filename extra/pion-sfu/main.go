@@ -575,6 +575,7 @@ func main() {
 	// parse command line args
 	webrtcPort := flag.Int("port", 5000, "WebRTC UDP port")
 	webrtcPublicIp := flag.String("ip", "[IP_ADDRESS]", "WebRTC public IPv4 address, or a host name that resolves to one")
+	webrtcLanIp := flag.String("lan-ip", "", "Optional WebRTC IPv4 address to advertise for clients on the local network")
 	ipcPath := flag.String("ipc", "/tmp/sfu-ipc.sock", "IPC unix socket path")
 	verbose := flag.Bool("verbose", false, "Enable pion debug logging")
 	flag.Float64Var(&incomingDropPercent, "drop-in", 0, "Percentage of publisher RTP packets to drop on arrival, for testing loss recovery")
@@ -604,13 +605,26 @@ func main() {
 	// restrict to UDP4 to improve compatibility with Firefox's strict ICE parser
 	settingEngine.SetNetworkTypes([]webrtc.NetworkType{webrtc.NetworkTypeUDP4})
 
-	// this is so that the sdp offer always sends our public IP
-	// in case our SFU server is behind NAT
-	settingEngine.SetICEAddressRewriteRules(webrtc.ICEAddressRewriteRule{
-		External:        []string{publicIP},
-		AsCandidateType: webrtc.ICECandidateTypeHost,
-		Mode:            webrtc.ICEAddressRewriteReplace,
-	})
+	// advertise the public IP so the SDP works behind NAT. With a LAN IP configured,
+	// append both addresses so local encoders can use the private route instead of hairpin NAT.
+	if *webrtcLanIp == "" {
+		settingEngine.SetICEAddressRewriteRules(webrtc.ICEAddressRewriteRule{
+			External:        []string{publicIP},
+			AsCandidateType: webrtc.ICECandidateTypeHost,
+			Mode:            webrtc.ICEAddressRewriteReplace,
+		})
+	} else {
+		lanIP, err := resolvePublicIP(*webrtcLanIp)
+		if err != nil {
+			log.Fatalf("resolve WebRTC LAN IP %q: %v", *webrtcLanIp, err)
+		}
+		settingEngine.SetICEAddressRewriteRules(webrtc.ICEAddressRewriteRule{
+			External:        []string{publicIP, lanIP},
+			AsCandidateType: webrtc.ICECandidateTypeHost,
+			Mode:            webrtc.ICEAddressRewriteAppend,
+		})
+		log.Printf("WebRTC LAN IP: %s", lanIP)
+	}
 
 	logFactory := logging.NewDefaultLoggerFactory()
 	logFactory.DefaultLogLevel = logging.LogLevelWarn
