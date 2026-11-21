@@ -2,33 +2,9 @@ package main
 
 import (
 	"encoding/binary"
-	"strings"
 
 	"github.com/pion/rtp"
 )
-
-// spropParameterSets is the base64 SPS,PPS pair injected into the SDP answer
-// for external publishers that do not emit parameter sets in the RTP stream.
-// These bytes come from a real libopenh264 encode of 1280x720 Constrained
-// Baseline (profile-level-id 42e01f), which is what OBS offers.
-const spropParameterSets = "Z0LAH4xoBQBbsBAR4RCNQA==,aM48gA=="
-
-// addSpropParameterSets appends sprop-parameter-sets to every H264 fmtp line
-// in the SDP answer that does not already carry it.
-func addSpropParameterSets(sdp string) string {
-	lines := strings.Split(sdp, "\n")
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, "a=fmtp:") || !strings.Contains(trimmed, "profile-level-id=") {
-			continue
-		}
-		if strings.Contains(trimmed, "sprop-parameter-sets=") {
-			continue
-		}
-		lines[i] = line + ";sprop-parameter-sets=" + spropParameterSets
-	}
-	return strings.Join(lines, "\n")
-}
 
 // parameterSets holds the SPS and PPS NAL units (including their NAL headers)
 // observed in the incoming H264 stream. They are captured live rather than
