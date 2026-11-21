@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
-import { Channel, GoLiveStreams, Member, Recipient, Stream, StreamPreviews } from "@spacebar/database";
+import { Channel, ExternalStreams, GoLiveStreams, Member, Recipient, Stream, StreamPreviews } from "@spacebar/database";
 import { getPermission } from "@spacebar/util";
 import { HTTPError } from "lambert-server";
 
@@ -9,6 +9,9 @@ const MAX_PREVIEW_LENGTH = 2 * 1024 * 1024;
 
 const PREVIEW_WAIT_MS = 10_000;
 const waiters = new Map<string, Set<(url: string) => void>>();
+
+const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"><rect width="1280" height="720" fill="#1e1f22"/><circle cx="640" cy="300" r="96" fill="#5865f2"/><text x="640" y="330" font-family="sans-serif" font-size="60" font-weight="bold" fill="#ffffff" text-anchor="middle">LIVE</text><text x="640" y="470" font-family="sans-serif" font-size="32" fill="#b5bac1" text-anchor="middle">Streaming from an external encoder</text></svg>`;
+const EXTERNAL_PREVIEW = `data:image/svg+xml;base64,${Buffer.from(placeholderSvg).toString("base64")}`;
 
 const ownerOf = (key: string) => key.split(":").at(-1);
 
@@ -30,9 +33,11 @@ router.get("/", route({ responses: { 200: {}, 404: {} } }), async (req: Request,
     const key = req.params.stream_key as string;
     const parts = key.split(":");
     if (!(await canWatch(key, req.user_id))) throw new HTTPError("Unknown stream preview", 404);
-    if (!StreamPreviews.has(key) && !(await Stream.exists({ where: { owner_id: ownerOf(key), channel_id: parts.at(-2) } }))) throw new HTTPError("Unknown stream preview", 404);
+    const stream = await Stream.findOne({ where: { owner_id: ownerOf(key), channel_id: parts.at(-2) } });
+    if (!StreamPreviews.has(key) && !stream) throw new HTTPError("Unknown stream preview", 404);
     const ready = StreamPreviews.get(key);
     if (ready) return res.json({ url: ready });
+    if (stream && ExternalStreams.has(stream.id)) return res.json({ url: EXTERNAL_PREVIEW });
 
     const url = await new Promise<string | undefined>((resolve) => {
         const listeners = waiters.get(key) ?? new Set();

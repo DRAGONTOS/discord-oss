@@ -4,6 +4,7 @@ import { Stream } from "../entities/Stream";
 import { StreamSession } from "../entities/StreamSession";
 
 export const StreamPreviews = new Map<string, string>();
+export const ExternalStreams = new Set<string>();
 const paused = new Set<string>();
 
 export class GoLiveStreams {
@@ -48,6 +49,7 @@ export class GoLiveStreams {
         for (const stream of streams) {
             const streamKey = GoLiveStreams.key(stream);
             StreamPreviews.delete(streamKey);
+            ExternalStreams.delete(stream.id);
             paused.delete(stream.id);
             await stream.remove();
             const guildId = stream.channel?.guild_id;

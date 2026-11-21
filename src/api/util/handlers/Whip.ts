@@ -1,4 +1,4 @@
-import { Member, Stream, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
+import { ExternalStreams, Member, Stream, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
 import { generateStreamKey } from "@spacebar/gateway";
 import { Config, Snowflake, emitEvent } from "@spacebar/util";
 import type { StreamDeleteEvent, VoiceStateUpdateEvent } from "@spacebar/util";
@@ -36,6 +36,7 @@ async function startExternalStream(userId: string, channelId: string) {
         stream = Stream.create({ id: Snowflake.generate(), owner_id: userId, channel_id: channelId, endpoint: region.endpoint });
         await stream.save();
     }
+    ExternalStreams.add(stream.id);
     voiceState.self_stream = true;
     await voiceState.save();
     if (voiceState.guild_id)
@@ -66,6 +67,7 @@ async function endExternalStream(streamId: string, userId: string) {
         channel_id: guildId ? undefined : channelId,
         data: { stream_key: streamKey },
     } satisfies StreamDeleteEvent);
+    ExternalStreams.delete(stream.id);
     await stream.remove();
 
     const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: channelId } });
