@@ -258,6 +258,13 @@ export default definePlugin({
                 },
             ],
         },
+        {
+            find: "Refusing to create remote user for the local user ID",
+            replacement: {
+                match: /(createUser\(\i,\i,\i\)\{if\(\i===)this\.userId(\))/,
+                replace: '$1this.userId&&this.context!=="stream"$2',
+            },
+        },
     ],
 
     start() {
