@@ -26,10 +26,10 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 
 ## Run an instance
 
-On the `production` branch, Compose builds the server and SFU images from this checkout by default. On the `docker-stable` branch, Compose pulls the published images from GitHub Container Registry instead. Both use the same `docker-compose.yml` and `.env.example`:
+This branch runs the published images from GitHub Container Registry. It needs Docker, this repository's `docker-compose.yml` and `.env.example`, and nothing else:
 
 ```sh
-git clone https://github.com/libre-cord/librecord.git && cd librecord
+git clone -b docker-stable https://github.com/libre-cord/librecord.git && cd librecord
 cp .env.example .env
 $EDITOR .env
 docker compose up -d
@@ -38,12 +38,11 @@ docker compose logs -f client
 
 The client service downloads Discord's web client into a volume on the first start and exits; the server then listens on `127.0.0.1:32171`. Point a reverse proxy at it and open `https://<DOMAIN>/register`.
 
-GitHub Actions publishes `ghcr.io/libre-cord/meowcord-server` and `ghcr.io/libre-cord/meowcord-sfu` when a version tag such as `v1.2.3` is pushed. `latest` tracks the latest release, and each release also gets `sha-<commit>` tags. To run a published image from any branch, override both the image names and the pull policy:
+GitHub Actions publishes `ghcr.io/libre-cord/meowcord-server` and `ghcr.io/libre-cord/meowcord-sfu` when a version tag such as `v1.2.3` is pushed. `latest` tracks the latest release, and each release also gets `sha-<commit>` tags. To pin an exact release, override the image names before starting:
 
 ```sh
 MEOWCORD_SERVER_IMAGE=ghcr.io/libre-cord/meowcord-server:v1.2.3 \
 MEOWCORD_SFU_IMAGE=ghcr.io/libre-cord/meowcord-sfu:v1.2.3 \
-MEOWCORD_PULL_POLICY=always \
 docker compose up -d
 ```
 

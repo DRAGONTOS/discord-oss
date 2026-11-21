@@ -12,7 +12,7 @@ This page runs a public instance with Docker Compose on one Linux host. [native.
 | `warp`     | Cloudflare WARP as a SOCKS5 proxy for fetches of user-chosen URLs. |
 | `server`   | API, CDN, gateway, voice gateway and web client on port 3001 inside the container, published on `127.0.0.1:32171`. |
 
-On the `production` branch, Compose builds the `meowcord-server` and `meowcord-sfu` images from this checkout by default. On the `docker-stable` branch, Compose pulls them from GitHub Container Registry instead. The `MEOWCORD_SERVER_IMAGE`, `MEOWCORD_SFU_IMAGE` and `MEOWCORD_PULL_POLICY` variables switch between the two on any branch. Equicord is always at the commit pinned in `client/vencord.json`; see [Prebuilt images](#prebuilt-images) for the published image names.
+This branch has no build configuration. Compose pulls the `meowcord-server` and `meowcord-sfu` images from GitHub Container Registry and runs them. Set `MEOWCORD_SERVER_IMAGE` and `MEOWCORD_SFU_IMAGE` to pin a release. The Equicord build is already inside the published images; see [Prebuilt images](#prebuilt-images) for the image names.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ docker compose up -d
 docker compose logs -f client
 ```
 
-On `production`, `docker compose up -d` builds the images from the checkout. On `docker-stable`, it pulls the published images.
+`docker compose up -d` pulls the published images and starts the stack.
 
 The client service downloads about 300 MB in 12,000 files, which takes several minutes. The server starts when the client service exits and listens on `127.0.0.1:32171`. Point your reverse proxy or tunnel at it, as [Your own reverse proxy](#your-own-reverse-proxy) describes, then open `https://<DOMAIN>/register`. Nothing from Discord goes into the image or into git.
 
@@ -52,13 +52,13 @@ Each release also gets an immutable `sha-<commit>` tag, which is useful for pinn
 echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin
 ```
 
-Compose reads `MEOWCORD_SERVER_IMAGE`, `MEOWCORD_SFU_IMAGE` and `MEOWCORD_PULL_POLICY` from `.env`, so you can point at a mirror or a specific commit:
+Compose reads `MEOWCORD_SERVER_IMAGE` and `MEOWCORD_SFU_IMAGE` from `.env`, so you can point at a mirror or a specific release:
 
 ```sh
 MEOWCORD_SERVER_IMAGE=ghcr.io/libre-cord/meowcord-server:sha-abc1234 docker compose up -d
 ```
 
-`MEOWCORD_PULL_POLICY=build` makes Compose use the local `build:` blocks instead of pulling. The `client` service always uses the server image and never pulls on its own, because the `server` service has already made it available locally.
+All three image services pull on start. Updating an instance means pulling a new tag and recreating the containers, which [Updates](#updates) covers.
 
 ## Environment
 
@@ -159,7 +159,6 @@ The restore script checks the checksums, refuses a database or volume that has d
 
 ```sh
 git pull
-REVISION=$(git rev-parse HEAD) REVISION_TIME=$(git log -1 --format=%ct) docker compose build
 docker compose up -d
 ```
 
@@ -193,6 +192,8 @@ A failed download or check leaves the server stopped. To go back, restore the ar
 ```
 
 ### Automatic updates
+
+These scripts deploy a source checkout by rebuilding images, so they are not used on this pull-only branch. Update here by pulling a new published tag and recreating the containers, or with the webhook described below.
 
 `scripts/auto-update.sh` deploys every new commit on the checked out branch. It fast-forwards the checkout, rebuilds the images, downloads the web client again when the new code pins a different Discord build in `client/release.json` (the server refuses any other build), runs `docker compose up -d` and waits up to 5 minutes for `/api/ping`. A run with nothing new only does a `git fetch`, so a systemd timer can run it every 30 seconds and a merge to `main` starts deploying within half a minute. With the checkout in `/srv/meowcord`, owned by a user in the `docker` group:
 
@@ -298,7 +299,7 @@ The Compose project used to be called `fosscord`. On an older installation, keep
 
 ```sh
 docker compose -p fosscord down
-docker compose up -d --build
+docker compose up -d
 ```
 
 Don't add the `meowcord` values from `.env.example`, because they select new, empty volumes. If the old project had a custom name, set `MEOWCORD_VOLUME_PREFIX` to it first.
