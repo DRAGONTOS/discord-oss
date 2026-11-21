@@ -312,7 +312,7 @@ export class PionMediaServer implements SignalingDelegate {
         room.clients.set(userId, client);
         this.clientsByUniqueId.set(client.uniqueId, client);
         this.externalClients.set(client.uniqueId, client);
-        await this.ipc.request({ type: "join", clientId: client.uniqueId });
+        await this.ipc.request({ type: "join", clientId: client.uniqueId, userId });
         return client;
     }
 
@@ -344,7 +344,7 @@ export class PionMediaServer implements SignalingDelegate {
         room.clients.set(sharesRoomWithExternal ? client.uniqueId : userId, client);
         this.clientsByUniqueId.set(client.uniqueId, client);
         if (type !== "stream") this.voiceClientsByUserId.set(userId, client);
-        await this.ipc.request({ type: "join", clientId: client.uniqueId });
+        await this.ipc.request({ type: "join", clientId: client.uniqueId, userId });
         return client as WebRtcClient<T>;
     }
 

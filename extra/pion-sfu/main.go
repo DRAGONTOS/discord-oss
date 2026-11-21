@@ -110,7 +110,7 @@ func createMediaEngine() (*webrtc.MediaEngine, error) {
 
 // handle "join": intermediary signals a new client has connected.
 // creates a peer connection for that clientId
-func handleJoin(clientID string) error {
+func handleJoin(clientID string, userID string) error {
 	if sfu.GetPeer(clientID) != nil {
 		return fmt.Errorf("client %s already joined", clientID)
 	}
@@ -138,6 +138,7 @@ func handleJoin(clientID string) error {
 
 	p := &Peer{
 		id:          clientID,
+		userID:      userID,
 		pc:          pc,
 		transport:   videoSender.Transport(),
 		masterAudio: masterAudio,

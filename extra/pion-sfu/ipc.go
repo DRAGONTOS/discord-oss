@@ -183,7 +183,7 @@ func (ipcConn *IpcConnection) processMessage(ctx context.Context, ipcMsg IpcMess
 	// "join" and "leave" don't require an existing peer
 	switch msg.Type {
 	case "join":
-		handleErr = handleJoin(clientID)
+		handleErr = handleJoin(clientID, msg.UserID)
 		if handleErr == nil {
 			ipcConn.sendReply(requestID, SignalMessage{
 				Type:     "joined",

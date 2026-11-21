@@ -141,7 +141,7 @@ func TestExternalPublishDirectionsFromRawOffer(t *testing.T) {
 func TestExternalOfferSetsFlagsWithoutDuplicateTransceivers(t *testing.T) {
 	testAPI(t)
 	useTestIPC(t)
-	if err := handleJoin("ext-publisher"); err != nil {
+	if err := handleJoin("ext-publisher", "owner"); err != nil {
 		t.Fatal(err)
 	}
 	p := sfu.GetPeer("ext-publisher")
@@ -202,7 +202,7 @@ func TestExternalOfferSetsFlagsWithoutDuplicateTransceivers(t *testing.T) {
 func TestExternalPublisherDisconnectEvent(t *testing.T) {
 	testAPI(t)
 	events := captureIPC(t)
-	if err := handleJoin("ext-disconnect"); err != nil {
+	if err := handleJoin("ext-disconnect", "owner"); err != nil {
 		t.Fatal(err)
 	}
 	p := sfu.GetPeer("ext-disconnect")
