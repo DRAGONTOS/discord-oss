@@ -1,3 +1,4 @@
+import { ssrcsOf } from "../whip-ssrc";
 import { ExternalStreams, Member, Stream, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
 import { generateStreamKey } from "@spacebar/gateway";
 import { Config, Snowflake, emitEvent } from "@spacebar/util";
@@ -18,11 +19,6 @@ export const resolveKey = (req: Request) => {
     if (fromPath) return fromPath;
     const authorization = req.get("authorization");
     return authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
-};
-
-const ssrcsOf = (sdp: string) => {
-    const all = [...sdp.matchAll(/^a=ssrc:(\d+)/gm)].map((match) => Number(match[1]));
-    return { audio: all[0], video: all[1] };
 };
 
 export class VoiceStateRequiredError extends Error {}
@@ -120,7 +116,7 @@ export async function whipPost(req: Request, res: Response) {
     const parsed = ssrcsOf(sdp);
     const audioSsrc = parsed.audio ?? 1;
     const videoSsrc = parsed.video ?? audioSsrc + 2;
-    const rtxSsrc = videoSsrc + 1;
+    const rtxSsrc = parsed.rtx ?? videoSsrc + 1;
 
     let client: Publisher | undefined;
     let streamId: string | undefined;
