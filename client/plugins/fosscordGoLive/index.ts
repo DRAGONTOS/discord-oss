@@ -232,6 +232,32 @@ export default definePlugin({
                     '$self.renderGoLiveButton({plainButton:(0,$1.jsx)("div",{className:$2.IF,children:(0,$1.jsx)($4.A,{tooltipText:$5,disabled:$6,onClick:$7,icon:$8})}),anchorButton:(0,$1.jsx)("div",{className:$2.IF,children:(0,$1.jsx)($4.A,{tooltipText:$5,disabled:$6,onClick:null,icon:$8})}),share:$7,streaming:o,disabled:$6})',
             },
         },
+        {
+            find: "_handleVideo(e,t,n,i,r){",
+            replacement: [
+                {
+                    match: /this\._shouldDropMediaEventForUser\((\i),"VIDEO"\)/,
+                    replace: '($1!==this.userId&&this._shouldDropMediaEventForUser($1,"VIDEO"))',
+                },
+                {
+                    match: /(&&null!=this\._connection&&)this\.userId!==(\i)(\)\{if\(null!=this\._localMediaSinkWantsManager)/,
+                    replace: "$1!0$3",
+                },
+            ],
+        },
+        {
+            find: "_handleVideoStreamId(e){",
+            replacement: [
+                {
+                    match: /this\.userId!==\i(?=&&\(0!==\i\|\|null!==\i)/,
+                    replace: "!0",
+                },
+                {
+                    match: /this\.userId!==\i(?=&&\(null!=this\._localMediaSinkWantsManager)/,
+                    replace: "!0",
+                },
+            ],
+        },
     ],
 
     start() {
