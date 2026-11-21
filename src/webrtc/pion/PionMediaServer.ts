@@ -15,7 +15,7 @@ const VIDEO_EXTENSIONS = [
     "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01",
     "urn:3gpp:video-orientation",
 ];
-const H264_PROFILES = new Set(["42e01f", "4d0028", "64001f", "640028"]);
+const H264_PROFILES = new Set(["42e01f", "4d0028", "64001f", "640028", "42e028", "4d0033", "640033", "42e033"]);
 const DEFAULT_H264_PROFILE = "42e01f";
 const DEFAULT_MAX_BITRATE = 2500;
 const MIN_MAX_BITRATE = 500;
