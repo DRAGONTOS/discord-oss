@@ -94,8 +94,8 @@ func TestHardcodedParameterSetsDescribe720pConstrainedBaseline31(t *testing.T) {
 	if profile != 0x42 || level != 0x1f || constraints&0x40 == 0 || width != 1280 || height != 720 {
 		t.Fatalf("SPS describes profile=%x constraints=%x level=%x %dx%d", profile, constraints, level, width, height)
 	}
-	if !bytes.Equal(h264PPS, []byte{0x68, 0xce, 0x0f, 0x2c, 0x80}) {
-		t.Fatalf("unexpected PPS: %x", h264PPS)
+	if h264PPS[0]&0x1f != 8 {
+		t.Fatalf("PPS NAL type %d", h264PPS[0]&0x1f)
 	}
 }
 

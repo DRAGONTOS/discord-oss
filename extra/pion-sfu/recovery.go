@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -189,7 +190,30 @@ func (pt *PublishedTrack) ingest(pkt *rtp.Packet) {
 	}
 
 	subscribers := sfu.Subscribers(pt.key)
+	if pt.kind == "video" && pt.publisher.external {
+		pt.sampleMu.Lock()
+		if !pt.sampleDumped && len(pt.sampleCapture) < 60 {
+			copyPkt := *pkt
+			pt.sampleCapture = append(pt.sampleCapture, &copyPkt)
+			if len(pt.sampleCapture) == 60 {
+				pt.sampleDumped = true
+				sample := append([]*rtp.Packet{h264ParameterSetPacket(pt.sampleCapture[0])}, pt.sampleCapture...)
+				annexb := h264AnnexB(sample)
+				go func() {
+					if err := os.WriteFile("/tmp/external-h264-sample.264", annexb, 0o644); err != nil {
+						log.Printf("[sps] dump failed: %v", err)
+					} else {
+						log.Printf("[sps] dumped %d bytes Annex-B sample", len(annexb))
+					}
+				}()
+			}
+		}
+		pt.sampleMu.Unlock()
+	}
 	if pt.kind == "video" && pt.publisher.external && isH264IDRStart(pkt.Payload) {
+		if pt.seqShift.Load() == 0 {
+			log.Printf("[sps] injecting SPS/PPS before IDR for external publisher %s seq=%d", pt.publisher.id, pkt.SequenceNumber)
+		}
 		parameterSets := h264ParameterSetPacket(pkt)
 		for _, other := range subscribers {
 			if pt.forwardsTo(other) {
