@@ -1,4 +1,7 @@
-import { resolveStreamIngestKey } from "@spacebar/database";
+import { Member, Stream, StreamSession, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
+import { genVoiceToken, generateStreamKey } from "@spacebar/gateway";
+import { Config, Snowflake, emitEvent } from "@spacebar/util";
+import type { StreamCreateEvent, StreamDeleteEvent, StreamServerUpdateEvent, VoiceStateUpdateEvent } from "@spacebar/util";
 import { mediaServer } from "@spacebar/webrtc";
 import type { Request, Response } from "express";
 
@@ -8,7 +11,7 @@ import { announceExternalPublisher } from "../../../webrtc/opcodes/Video";
 type Publisher = Awaited<ReturnType<PionMediaServer["registerExternalPublisher"]>>;
 
 const getMedia = () => mediaServer as PionMediaServer;
-const active = new Map<string, Publisher>();
+const active = new Map<string, { client: Publisher; streamId: string }>();
 
 export const resolveKey = (req: Request) => {
     const fromPath = typeof req.params.key === "string" ? req.params.key : "";
@@ -22,12 +25,83 @@ const ssrcsOf = (sdp: string) => {
     return { audio: all[0], video: all[1] };
 };
 
+async function startExternalStream(userId: string, guildId: string | null, channelId: string) {
+    const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: channelId } });
+    if (!voiceState) throw new Error("not connected to the voice channel");
+    const region = Config.get().regions.available.find((entry) => entry.id === Config.get().regions.default);
+    if (!region) throw new Error("no default region configured");
+
+    let stream = await Stream.findOne({ where: { owner_id: userId, channel_id: channelId } });
+    if (!stream) {
+        stream = Stream.create({ id: Snowflake.generate(), owner_id: userId, channel_id: channelId, endpoint: region.endpoint });
+        await stream.save();
+    }
+    const sessionToken = genVoiceToken();
+    await StreamSession.create({ stream_id: stream.id, user_id: userId, session_id: voiceState.session_id, token: sessionToken }).save();
+
+    const streamKey = generateStreamKey(guildId ? "guild" : "call", guildId ?? undefined, channelId, userId);
+    await emitEvent({
+        event: "STREAM_CREATE",
+        user_id: userId,
+        data: {
+            stream_key: streamKey,
+            rtc_server_id: stream.id,
+            rtc_channel_id: (BigInt(stream.id) - 1n).toString(),
+            viewer_ids: [],
+            region: region.id,
+            paused: false,
+        },
+    } satisfies StreamCreateEvent);
+    await emitEvent({
+        event: "STREAM_SERVER_UPDATE",
+        user_id: userId,
+        data: { token: sessionToken, stream_key: streamKey, guild_id: null, endpoint: stream.endpoint },
+    } satisfies StreamServerUpdateEvent);
+
+    voiceState.self_stream = true;
+    await voiceState.save();
+    if (voiceState.guild_id) voiceState.member = await Member.findOneOrFail({ where: { id: userId, guild_id: voiceState.guild_id }, relations: { user: true, roles: true } });
+    await emitEvent({
+        event: "VOICE_STATE_UPDATE",
+        user_id: userId,
+        guild_id: voiceState.guild_id ?? undefined,
+        channel_id: voiceState.guild_id ? undefined : channelId,
+        data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
+    } satisfies VoiceStateUpdateEvent);
+    return stream;
+}
+
+async function endExternalStream(streamId: string, userId: string) {
+    const stream = await Stream.findOne({ where: { id: streamId }, relations: { channel: true } });
+    if (!stream) return;
+    const streamKey = generateStreamKey(stream.channel?.guild_id ? "guild" : "call", stream.channel?.guild_id ?? undefined, stream.channel_id, userId);
+    await emitEvent({ event: "STREAM_DELETE", data: { stream_key: streamKey } } satisfies StreamDeleteEvent);
+    await stream.remove();
+
+    const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: stream.channel_id } });
+    if (voiceState?.self_stream) {
+        voiceState.self_stream = false;
+        await voiceState.save();
+        if (voiceState.guild_id) voiceState.member = await Member.findOneOrFail({ where: { id: userId, guild_id: voiceState.guild_id }, relations: { user: true, roles: true } });
+        await emitEvent({
+            event: "VOICE_STATE_UPDATE",
+            user_id: userId,
+            guild_id: voiceState.guild_id ?? undefined,
+            channel_id: voiceState.guild_id ? undefined : stream.channel_id,
+            data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
+        } satisfies VoiceStateUpdateEvent);
+    }
+}
+
 function bindDisconnectHandler() {
     const media = getMedia();
     if (!media || media.onExternalDisconnected) return;
-    media.onExternalDisconnected = (client) => {
-        for (const [key, publisher] of active) {
-            if (publisher.user_id === client.user_id && publisher.voiceRoomId === client.voiceRoomId) active.delete(key);
+    media.onExternalDisconnected = async (client) => {
+        for (const [key, session] of active) {
+            if (session.client.user_id === client.user_id && session.client.voiceRoomId === client.voiceRoomId) {
+                active.delete(key);
+                await endExternalStream(session.streamId, session.client.user_id);
+            }
         }
     };
 }
@@ -46,10 +120,13 @@ export async function whipPost(req: Request, res: Response) {
     const audioSsrc = parsed.audio ?? 1;
     const videoSsrc = parsed.video ?? audioSsrc + 2;
     const rtxSsrc = videoSsrc + 1;
-    const roomId = record.channel_id;
 
     let client: Publisher | undefined;
+    let streamId: string | undefined;
     try {
+        const stream = await startExternalStream(record.user_id, record.guild_id, record.channel_id);
+        streamId = stream.id;
+        const roomId = stream.id;
         client = await getMedia().registerExternalPublisher(roomId, record.user_id, { voiceProtocol: "webrtc" });
         client.initIncomingSSRCs({ audio_ssrc: audioSsrc, video_ssrc: videoSsrc, rtx_ssrc: rtxSsrc });
         client.videoStream = {
@@ -69,7 +146,7 @@ export async function whipPost(req: Request, res: Response) {
         const answer = await getMedia().acceptExternalOffer(client, sdp, roomId, record.user_id);
         if (!answer?.sdp) throw new Error("SFU did not return an SDP answer");
 
-        active.set(key, client);
+        active.set(key, { client, streamId: stream.id });
         await announceExternalPublisher(record.user_id, roomId, client.videoStream, audioSsrc, videoSsrc, rtxSsrc);
         res.set("Location", `/whip/${encodeURIComponent(key)}`);
         res.set("Accept-Patch", "application/trickle-ice-sdpfrag");
@@ -78,6 +155,7 @@ export async function whipPost(req: Request, res: Response) {
         return res.status(201).set("Content-Type", "application/sdp").send(answer.sdp);
     } catch (error) {
         if (client) getMedia().removeExternalPublisher(client);
+        if (streamId) await endExternalStream(streamId, record.user_id);
         console.error(`[WHIP] failed to publish ${key}:`, error);
         return res.status(500).send();
     }
@@ -85,28 +163,29 @@ export async function whipPost(req: Request, res: Response) {
 
 export function whipPatch(req: Request, res: Response) {
     const key = resolveKey(req);
-    const client = active.get(key);
+    const session = active.get(key);
     const body = typeof req.body === "string" ? req.body : Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body ?? "");
     let count = 0;
-    if (client) {
+    if (session) {
         for (const line of body.split(/\r?\n/)) {
             const candidate = line.trim().replace(/^a=/, "");
             if (candidate.startsWith("candidate:")) {
-                getMedia().addExternalIceCandidate(client, candidate);
+                getMedia().addExternalIceCandidate(session.client, candidate);
                 count++;
             }
         }
     }
-    console.log(`[WHIP PATCH] key=${key ? "present" : "missing"} client=${!!client} type=${req.get("content-type") ?? "none"} bytes=${body.length} candidates=${count}`);
+    console.log(`[WHIP PATCH] key=${key ? "present" : "missing"} client=${!!session} type=${req.get("content-type") ?? "none"} bytes=${body.length} candidates=${count}`);
     return res.sendStatus(204);
 }
 
-export function whipDelete(req: Request, res: Response) {
+export async function whipDelete(req: Request, res: Response) {
     const key = resolveKey(req);
-    const client = active.get(key);
-    if (client) {
+    const session = active.get(key);
+    if (session) {
         active.delete(key);
-        getMedia().removeExternalPublisher(client);
+        getMedia().removeExternalPublisher(session.client);
+        await endExternalStream(session.streamId, session.client.user_id);
     }
     return res.sendStatus(204);
 }
