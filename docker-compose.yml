@@ -7,8 +7,8 @@ x-server: &server
     args:
       REVISION: ${REVISION:-}
       REVISION_TIME: ${REVISION_TIME:-0}
-  image: ${MEOWCORD_SERVER_IMAGE:-meowcord-server:latest}
-  pull_policy: ${MEOWCORD_PULL_POLICY:-build}
+  image: ${MEOWCORD_SERVER_IMAGE:-ghcr.io/libre-cord/meowcord-server:latest}
+  pull_policy: ${MEOWCORD_PULL_POLICY:-always}
   init: true
 
 services:
@@ -29,8 +29,8 @@ services:
       start_period: 30s
 
   client:
-    image: ${MEOWCORD_SERVER_IMAGE:-meowcord-server:latest}
-    pull_policy: never
+    image: ${MEOWCORD_SERVER_IMAGE:-ghcr.io/libre-cord/meowcord-server:latest}
+    pull_policy: ${MEOWCORD_PULL_POLICY:-always}
     init: true
     command: ["client"]
     restart: "no"
@@ -43,8 +43,8 @@ services:
     build:
       context: .
       target: sfu
-    image: ${MEOWCORD_SFU_IMAGE:-meowcord-sfu:latest}
-    pull_policy: ${MEOWCORD_PULL_POLICY:-build}
+    image: ${MEOWCORD_SFU_IMAGE:-ghcr.io/libre-cord/meowcord-sfu:latest}
+    pull_policy: ${MEOWCORD_PULL_POLICY:-always}
     init: true
     restart: unless-stopped
     environment:
