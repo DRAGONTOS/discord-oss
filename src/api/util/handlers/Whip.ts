@@ -1,7 +1,7 @@
-import { Member, Stream, StreamSession, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
+import { Stream, StreamSession, VoiceState, resolveStreamIngestKey } from "@spacebar/database";
 import { genVoiceToken, generateStreamKey } from "@spacebar/gateway";
 import { Config, Snowflake, emitEvent } from "@spacebar/util";
-import type { StreamCreateEvent, StreamDeleteEvent, StreamServerUpdateEvent, VoiceStateUpdateEvent } from "@spacebar/util";
+import type { StreamCreateEvent, StreamDeleteEvent, StreamServerUpdateEvent } from "@spacebar/util";
 import { mediaServer } from "@spacebar/webrtc";
 import type { Request, Response } from "express";
 
@@ -58,16 +58,6 @@ async function startExternalStream(userId: string, guildId: string | null, chann
         data: { token: sessionToken, stream_key: streamKey, guild_id: null, endpoint: stream.endpoint },
     } satisfies StreamServerUpdateEvent);
 
-    voiceState.self_stream = true;
-    await voiceState.save();
-    if (voiceState.guild_id) voiceState.member = await Member.findOneOrFail({ where: { id: userId, guild_id: voiceState.guild_id }, relations: { user: true, roles: true } });
-    await emitEvent({
-        event: "VOICE_STATE_UPDATE",
-        user_id: userId,
-        guild_id: voiceState.guild_id ?? undefined,
-        channel_id: voiceState.guild_id ? undefined : channelId,
-        data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
-    } satisfies VoiceStateUpdateEvent);
     return stream;
 }
 
@@ -77,20 +67,6 @@ async function endExternalStream(streamId: string, userId: string) {
     const streamKey = generateStreamKey(stream.channel?.guild_id ? "guild" : "call", stream.channel?.guild_id ?? undefined, stream.channel_id, userId);
     await emitEvent({ event: "STREAM_DELETE", data: { stream_key: streamKey } } satisfies StreamDeleteEvent);
     await stream.remove();
-
-    const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: stream.channel_id } });
-    if (voiceState?.self_stream) {
-        voiceState.self_stream = false;
-        await voiceState.save();
-        if (voiceState.guild_id) voiceState.member = await Member.findOneOrFail({ where: { id: userId, guild_id: voiceState.guild_id }, relations: { user: true, roles: true } });
-        await emitEvent({
-            event: "VOICE_STATE_UPDATE",
-            user_id: userId,
-            guild_id: voiceState.guild_id ?? undefined,
-            channel_id: voiceState.guild_id ? undefined : stream.channel_id,
-            data: { ...voiceState.toPublicVoiceState(), member: voiceState.member?.toPublicMember() },
-        } satisfies VoiceStateUpdateEvent);
-    }
 }
 
 function bindDisconnectHandler() {
