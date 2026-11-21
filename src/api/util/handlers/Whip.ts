@@ -25,9 +25,11 @@ const ssrcsOf = (sdp: string) => {
     return { audio: all[0], video: all[1] };
 };
 
+export class VoiceStateRequiredError extends Error {}
+
 async function startExternalStream(userId: string, channelId: string) {
     const voiceState = await VoiceState.findOne({ where: { user_id: userId, channel_id: channelId } });
-    if (!voiceState) throw new Error("not connected to the voice channel");
+    if (!voiceState) throw new VoiceStateRequiredError("join the voice channel this stream key was created for before starting the encoder");
     const region = Config.get().regions.available.find((entry) => entry.id === Config.get().regions.default);
     if (!region) throw new Error("no default region configured");
 
@@ -152,6 +154,10 @@ export async function whipPost(req: Request, res: Response) {
     } catch (error) {
         if (client) getMedia().removeExternalPublisher(client);
         if (streamId) await endExternalStream(streamId, record.user_id);
+        if (error instanceof VoiceStateRequiredError) {
+            console.warn(`[WHIP] ${key} rejected: ${error.message}`);
+            return res.status(409).type("text/plain").send(error.message);
+        }
         console.error(`[WHIP] failed to publish ${key}:`, error);
         return res.status(500).send();
     }
