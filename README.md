@@ -26,7 +26,7 @@ It is a fork of [Spacebar](https://github.com/spacebarchat/server), written in T
 
 ## Run an instance
 
-The recommended way is the published Docker images. GitHub Actions builds them only when a version tag such as `v1.2.3` is pushed, so `latest` tracks the latest release and each release gets immutable version tags. You still need this repository for `docker-compose.yml` and `.env.example`:
+On the `production` branch, Compose builds the server and SFU images from this checkout by default. On the `docker-stable` branch, Compose pulls the published images from GitHub Container Registry instead. Both use the same `docker-compose.yml` and `.env.example`:
 
 ```sh
 git clone https://github.com/libre-cord/librecord.git && cd librecord
@@ -36,17 +36,18 @@ docker compose up -d
 docker compose logs -f client
 ```
 
-`docker compose up -d` pulls `ghcr.io/libre-cord/meowcord-server:latest` and `ghcr.io/libre-cord/meowcord-sfu:latest`. The client service downloads Discord's web client into a volume on the first start and exits; the server then listens on `127.0.0.1:32171`. Point a reverse proxy at it and open `https://<DOMAIN>/register`.
+The client service downloads Discord's web client into a volume on the first start and exits; the server then listens on `127.0.0.1:32171`. Point a reverse proxy at it and open `https://<DOMAIN>/register`.
 
-To pin an exact version, set both image tags before starting:
+GitHub Actions publishes `ghcr.io/libre-cord/meowcord-server` and `ghcr.io/libre-cord/meowcord-sfu` when a version tag such as `v1.2.3` is pushed. `latest` tracks the latest release, and each release also gets `sha-<commit>` tags. To run a published image from any branch, override both the image names and the pull policy:
 
 ```sh
 MEOWCORD_SERVER_IMAGE=ghcr.io/libre-cord/meowcord-server:v1.2.3 \
 MEOWCORD_SFU_IMAGE=ghcr.io/libre-cord/meowcord-sfu:v1.2.3 \
+MEOWCORD_PULL_POLICY=always \
 docker compose up -d
 ```
 
-`sha-<commit>` tags are also published for every build, and `MEOWCORD_PULL_POLICY=build docker compose up -d --build` builds from the checkout instead of pulling. If the packages are private, run `echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin` first with a token that has `read:packages`.
+If the packages are private, run `echo "$CR_PAT" | docker login ghcr.io -u <username> --password-stdin` first with a token that has `read:packages`.
 
 [Install](https://github.com/libre-cord/librecord/blob/production/docs/self-hosting/setup.md#install) has the full walkthrough. [setup.md](docs/self-hosting/setup.md) covers every environment variable, email, captchas, backups, updates, SQLite and running behind your own proxy. [native.md](docs/self-hosting/native.md) runs Librecord without Docker, and [workers.md](docs/self-hosting/workers.md) runs it on Cloudflare Workers.
 

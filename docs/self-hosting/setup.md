@@ -12,7 +12,7 @@ This page runs a public instance with Docker Compose on one Linux host. [native.
 | `warp`     | Cloudflare WARP as a SOCKS5 proxy for fetches of user-chosen URLs. |
 | `server`   | API, CDN, gateway, voice gateway and web client on port 3001 inside the container, published on `127.0.0.1:32171`. |
 
-Compose pulls the `meowcord-server` and `meowcord-sfu` images from GitHub Container Registry by default, built by `.github/workflows/docker.yml` on pushes to `production`. To build from this checkout instead, for example when testing a change, set `MEOWCORD_PULL_POLICY=build`. Equicord is always at the commit pinned in `client/vencord.json`; see [Prebuilt images](#prebuilt-images) for the image names and overrides.
+On the `production` branch, Compose builds the `meowcord-server` and `meowcord-sfu` images from this checkout by default. On the `docker-stable` branch, Compose pulls them from GitHub Container Registry instead. The `MEOWCORD_SERVER_IMAGE`, `MEOWCORD_SFU_IMAGE` and `MEOWCORD_PULL_POLICY` variables switch between the two on any branch. Equicord is always at the commit pinned in `client/vencord.json`; see [Prebuilt images](#prebuilt-images) for the published image names.
 
 ## Requirements
 
@@ -31,7 +31,7 @@ docker compose up -d
 docker compose logs -f client
 ```
 
-`docker compose up -d` pulls the published images. To build them locally from the checkout, use `MEOWCORD_PULL_POLICY=build docker compose up -d --build`.
+On `production`, `docker compose up -d` builds the images from the checkout. On `docker-stable`, it pulls the published images.
 
 The client service downloads about 300 MB in 12,000 files, which takes several minutes. The server starts when the client service exits and listens on `127.0.0.1:32171`. Point your reverse proxy or tunnel at it, as [Your own reverse proxy](#your-own-reverse-proxy) describes, then open `https://<DOMAIN>/register`. Nothing from Discord goes into the image or into git.
 
