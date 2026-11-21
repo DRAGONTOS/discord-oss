@@ -2,7 +2,7 @@ name: Docker images
 
 on:
   push:
-    branches: [production, docker-stable]
+    branches: [production]
     tags: ["v*"]
     paths-ignore: ["apps/**", "docs/**"]
 
