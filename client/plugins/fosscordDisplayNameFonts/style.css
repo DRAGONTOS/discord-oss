@@ -1,4 +1,0 @@
-[style*="--custom-dns-tile-columns"] {
-    /* biome-ignore lint/complexity/noImportantStyles: has to beat the inline style Discord sets on the element */
-    --custom-dns-tile-columns: 4 !important;
-}
